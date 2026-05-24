@@ -79,7 +79,16 @@ export PATH="$HOME/.pixi/bin:$PATH"
 # ----------------------------------------------------------------------------
 # Tool init / completions  (all guarded — no-op if the tool is absent)
 # ----------------------------------------------------------------------------
-command -v starship &>/dev/null && eval "$(starship init zsh)"
+if command -v starship &>/dev/null; then
+  eval "$(starship init zsh)"
+else
+  # Readable colored fallback when starship isn't installed
+  autoload -Uz colors add-zsh-hook vcs_info && colors
+  setopt PROMPT_SUBST
+  zstyle ':vcs_info:git:*' formats ' %F{yellow}%b%f'
+  add-zsh-hook precmd vcs_info
+  PROMPT='%F{green}%n@%m%f %F{cyan}%~%f${vcs_info_msg_0_} %(?.%F{green}.%F{red})%#%f '
+fi
 command -v zoxide   &>/dev/null && eval "$(zoxide init zsh)"
 command -v fzf      &>/dev/null && source <(fzf --zsh) 2>/dev/null
 command -v direnv   &>/dev/null && eval "$(direnv hook zsh)"   # standalone direnv (brew/pixi), not asdf
