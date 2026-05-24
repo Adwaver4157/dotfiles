@@ -1,0 +1,152 @@
+# AeroSpace config
+# Docs: https://nikitabobko.github.io/AeroSpace/guide
+
+# Start at login (AeroSpace adds itself to Login Items)
+start-at-login = true
+
+# Disable macOS-native fullscreen — yields better tiling behavior.
+# (Use alt-f for AeroSpace fullscreen instead of green-button fullscreen.)
+enable-normalization-flatten-containers = true
+enable-normalization-opposite-orientation-for-nested-containers = true
+
+# Layouts to cycle through with alt-/
+# Tiles = BSP-like split tiling, Accordion = stacked
+accordion-padding = 30
+default-root-container-layout = 'tiles'
+default-root-container-orientation = 'auto'
+
+# Notify mission-control when workspace changes (helps menubar tools)
+on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
+
+# Gaps between windows / screen edges
+[gaps]
+inner.horizontal = 8
+inner.vertical   = 8
+outer.left       = 8
+outer.bottom     = 8
+outer.top        = 8
+outer.right      = 8
+
+# Main mode = the default keymap
+[mode.main.binding]
+
+# --- Focus (Vim hjkl) ---
+alt-h = 'focus left'
+alt-j = 'focus down'
+alt-k = 'focus up'
+alt-l = 'focus right'
+
+# --- Move window ---
+alt-shift-h = 'move left'
+alt-shift-j = 'move down'
+alt-shift-k = 'move up'
+alt-shift-l = 'move right'
+
+# --- Resize (5% steps) ---
+alt-minus = 'resize smart -50'
+alt-equal = 'resize smart +50'
+
+# --- Layout toggles ---
+alt-slash = 'layout tiles horizontal vertical'   # cycle tile orientation
+alt-comma = 'layout accordion horizontal vertical'
+alt-f     = 'fullscreen'                          # AeroSpace fullscreen (not macOS native)
+alt-shift-f = 'macos-native-fullscreen'
+
+# Toggle floating / tiled for current window
+alt-shift-space = 'layout floating tiling'
+
+# Flatten current workspace tree (reset layout) — also on service mode (alt-shift-; then r)
+# alt-shift-r is reserved for "move window to workspace 14"; use service mode for flatten.
+
+# Balance sizes
+alt-shift-equal = 'balance-sizes'
+
+# --- Workspaces 1-9, 0 ---
+alt-1 = 'workspace 1'
+alt-2 = 'workspace 2'
+alt-3 = 'workspace 3'
+alt-4 = 'workspace 4'
+alt-5 = 'workspace 5'
+alt-6 = 'workspace 6'
+alt-7 = 'workspace 7'
+alt-8 = 'workspace 8'
+alt-9 = 'workspace 9'
+alt-0 = 'workspace 10'
+
+# Workspaces 11-20 continue on the QWERTY row (multi-monitor setups)
+alt-q = 'workspace 11'
+alt-w = 'workspace 12'
+alt-e = 'workspace 13'
+alt-r = 'workspace 14'
+alt-t = 'workspace 15'
+alt-y = 'workspace 16'
+alt-u = 'workspace 17'
+alt-i = 'workspace 18'
+alt-o = 'workspace 19'
+alt-p = 'workspace 20'
+
+# Move focused window to workspace N
+alt-shift-1 = 'move-node-to-workspace 1'
+alt-shift-2 = 'move-node-to-workspace 2'
+alt-shift-3 = 'move-node-to-workspace 3'
+alt-shift-4 = 'move-node-to-workspace 4'
+alt-shift-5 = 'move-node-to-workspace 5'
+alt-shift-6 = 'move-node-to-workspace 6'
+alt-shift-7 = 'move-node-to-workspace 7'
+alt-shift-8 = 'move-node-to-workspace 8'
+alt-shift-9 = 'move-node-to-workspace 9'
+alt-shift-0 = 'move-node-to-workspace 10'
+
+# Move window to workspaces 11-20 (QWERTY row + shift)
+alt-shift-q = 'move-node-to-workspace 11'
+alt-shift-w = 'move-node-to-workspace 12'
+alt-shift-e = 'move-node-to-workspace 13'
+alt-shift-r = 'move-node-to-workspace 14'
+alt-shift-t = 'move-node-to-workspace 15'
+alt-shift-y = 'move-node-to-workspace 16'
+alt-shift-u = 'move-node-to-workspace 17'
+alt-shift-i = 'move-node-to-workspace 18'
+alt-shift-o = 'move-node-to-workspace 19'
+alt-shift-p = 'move-node-to-workspace 20'
+
+# Back-and-forth between last two workspaces (Vim style)
+alt-tab = 'workspace-back-and-forth'
+
+# Move whole workspace to next monitor (multi-display setup)
+alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
+
+# --- Service mode (alt-shift-;) ---
+# Used for reload, reset, etc. — enter mode then press a key, esc to exit.
+alt-shift-semicolon = 'mode service'
+
+[mode.service.binding]
+esc           = ['reload-config', 'mode main']
+r             = ['flatten-workspace-tree', 'mode main']  # reset layout
+f             = ['layout floating tiling', 'mode main']  # toggle floating
+backspace     = ['close-all-windows-but-current', 'mode main']
+alt-shift-h   = ['join-with left', 'mode main']
+alt-shift-j   = ['join-with down', 'mode main']
+alt-shift-k   = ['join-with up', 'mode main']
+alt-shift-l   = ['join-with right', 'mode main']
+
+# --- Force certain apps to float (system utilities, dialogs) ---
+[[on-window-detected]]
+if.app-id = 'com.apple.systempreferences'
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.finder'
+if.window-title-regex-substring = '情報$'   # Get Info windows
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.ActivityMonitor'
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.systemuiserver'
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = 'com.jordanbaird.Ice'
+run = 'layout floating'

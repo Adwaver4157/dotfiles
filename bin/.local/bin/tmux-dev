@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# ============================================================
+# tmux-dev: ワンコマンドで開発用tmuxセッションを立ち上げる
+#
+# Layout:
+#   ┌──────────┬─────────┐
+#   │          │ lazygit │
+#   │   nvim   ├─────────┤
+#   │          │  claude │
+#   └──────────┴─────────┘
+#
+# Usage:
+#   tmux-dev              # カレントディレクトリで起動
+#   tmux-dev ~/projects/foo   # 指定ディレクトリで起動
+#
+# 既に同名セッションがあればそこにattach（冪等）
+# ============================================================
+
+set -e
+
+# ---- 設定（好みで変えてOK） ----
+RIGHT_WIDTH="35%"      # 右カラムの幅
+RIGHT_SPLIT="50%"      # 右カラム内の上下分割位置
+LEFT_CMD="nvim ."      # 左ペインで実行するコマンド
+TOP_RIGHT_CMD="lazygit"   # 右上ペインで実行するコマンド
+BOT_RIGHT_CMD="claude"    # 右下ペインで実行するコマンド
+
+# ---- ディレクトリ解決 ----
+DIR="${1:-$PWD}"
+DIR="$(cd "$DIR" && pwd)"  # 絶対パス化
+
+# ---- セッション名（ディレクトリのbasename、ドットは _ に） ----
+SESSION="$(basename "$DIR" | tr '.' '_')"
+
+# ---- tmuxの中にいるかで attach/switch を切り替え ----
+if [ -n "$TMUX" ]; then
+  SWITCH_CMD="switch-client"
+else
+  SWITCH_CMD="attach-session"
+fi
+
+# ---- 既存セッションがあればそこに戻る ----
+if tmux has-session -t="$SESSION" 2>/dev/null; then
+  tmux "$SWITCH_CMD" -t "$SESSION"
+  exit 0
+fi
+
+# ---- 新規セッションをdetached状態で作成 ----
+tmux new-session -d -s "$SESSION" -c "$DIR" -n editor
+
+# 左ペイン: エディタ
+tmux send-keys -t "$SESSION:editor.0" "$LEFT_CMD" Enter
+
+# 右に分割（横方向）
+tmux split-window -h -l "$RIGHT_WIDTH" -c "$DIR" -t "$SESSION:editor.0"
+tmux send-keys -t "$SESSION:editor.1" "$TOP_RIGHT_CMD" Enter
+
+# 右ペインを上下に分割
+tmux split-window -v -l "$RIGHT_SPLIT" -c "$DIR" -t "$SESSION:editor.1"
+tmux send-keys -t "$SESSION:editor.2" "$BOT_RIGHT_CMD" Enter
+
+# 左ペイン（エディタ）にフォーカス
+tmux select-pane -t "$SESSION:editor.0"
+
+# attach / switch
+tmux "$SWITCH_CMD" -t "$SESSION"

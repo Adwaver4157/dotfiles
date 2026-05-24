@@ -1,0 +1,26 @@
+{
+  // Pattern A: VSCode/Cursor devcontainer built on your training image + Claude Code.
+  "name": "ml-gpu-claude",
+  "build": {
+    "dockerfile": "../Dockerfile.claude",
+    "args": {
+      "BASE_IMAGE": "your-project-train:latest",
+      "UID": "1000",
+      "GID": "1000"
+    }
+  },
+  // GPU passthrough (requires NVIDIA driver + nvidia-container-toolkit on host)
+  "runArgs": ["--gpus", "all", "--shm-size", "16gb"],
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "mounts": [
+    // data read-only; never mount ~/.ssh, ~/.aws, or the docker socket
+    "source=${localWorkspaceFolder}/data,target=/workspace/data,type=bind,readonly"
+  ],
+  "remoteUser": "developer",
+  "customizations": {
+    "vscode": {
+      "extensions": ["anthropic.claude-code", "ms-python.python"]
+    }
+  }
+}

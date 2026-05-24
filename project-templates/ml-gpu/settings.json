@@ -1,0 +1,72 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(ls *)",
+      "Bash(pwd)",
+      "Bash(cat *)",
+      "Bash(mkdir *)",
+      "Bash(which *)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(pip *)",
+      "Bash(pip3 *)",
+      "Bash(pytest *)",
+      "Bash(uv *)",
+      "Bash(ruff *)",
+      "Bash(pixi *)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(rm -r *)",
+      "Bash(sudo *)",
+      "Bash(chmod 777 *)",
+      "Bash(git push:*)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)",
+      "Bash(git branch -D *)",
+      "Bash(curl * | *)",
+      "Bash(wget * | *)",
+      "Bash(eval *)",
+      "Bash(sh -c *)",
+      "Bash(openssl enc -d *)",
+      "Bash(openssl enc * -d *)",
+      "Bash(openssl * -d *)",
+      "Bash(gpg --decrypt *)",
+      "Bash(gpg -d *)",
+      "Bash(npm install -g *)",
+      "Bash(pip install -i *)",
+      "Bash(pip install --index-url *)",
+      "Bash(pip install --extra-index-url *)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/.npmrc)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.bash_history)",
+      "Read(~/.zsh_history)",
+      "Read(**/credentials*)",
+      "Read(**/*secret*)",
+      "Read(**/*token*)"
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "teammateMode": "auto",
+  "enabledPlugins": {
+    "pyright-lsp@claude-plugins-official": true
+  },
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "high",
+  "theme": "dark"
+}

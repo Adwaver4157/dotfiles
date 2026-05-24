@@ -1,0 +1,57 @@
+# Pattern B: a `claude` service overlaid on your existing compose.
+# Usage:
+#   WANDB_API_KEY=... ANTHROPIC_API_KEY=... \
+#     docker compose -f docker-compose.yml -f docker-compose.claude.yml run --rm claude bash
+#   # then inside: claude
+services:
+  claude:
+    build:
+      context: .
+      dockerfile: Dockerfile.claude
+      args:
+        BASE_IMAGE: your-project-train:latest  # 既存の学習イメージ名
+    image: your-project-claude:latest
+    container_name: project-claude
+    # GPU を丸ごと渡す
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # 共有メモリ (DataLoader の num_workers 用)
+    shm_size: '16gb'
+    # マウント: ここが肝 — ~/.ssh, ~/.aws, /var/run/docker.sock は絶対に渡さない
+    volumes:
+      # コード: rw
+      - ./src:/workspace/src
+      - ./configs:/workspace/configs
+      - ./tests:/workspace/tests
+      # データ: 絶対 read-only で渡す
+      - ./data:/workspace/data:ro
+      # 書き込み先は明示的にマウント
+      - ./checkpoints:/workspace/checkpoints
+      - ./logs:/workspace/logs
+      - ./wandb:/workspace/wandb
+      # 永続化したいキャッシュ類
+      - hf_cache:/home/developer/.cache/huggingface
+      - pip_cache:/home/developer/.cache/pip
+      # Claude の認証 (OAuth トークンが持続)
+      - claude_config:/home/developer/.claude
+    environment:
+      - CUDA_VISIBLE_DEVICES=0,1  # 環境に合わせて
+      - WANDB_API_KEY=${WANDB_API_KEY}  # ホストの env から
+      # Claude 用
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    # 他の compose サービス (DB, MLflow等) にアクセスしたい場合
+    networks:
+      - default
+
+volumes:
+  hf_cache:
+  pip_cache:
+  claude_config:

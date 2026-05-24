@@ -1,0 +1,44 @@
+# ============================================================
+# Claude Code project-local notes for THIS repo
+# (NOT the claude/ stow package, which manages ~/.claude)
+# ============================================================
+/.claude/
+
+# ============================================================
+# claude/ stow package: allowlist what we actually track.
+# Everything else under ~/.claude (projects/, todos/, sessions/,
+# memory/, .credentials.json, settings.local.json ...) stays
+# machine-local and must never be committed.
+# ============================================================
+claude/.claude/*
+!claude/.claude/CLAUDE.md
+!claude/.claude/settings.json
+!claude/.claude/statusline.js
+!claude/.claude/agents/
+!claude/.claude/commands/
+!claude/.claude/skills/
+!claude/.claude/hooks/
+
+# ============================================================
+# OS / editor cruft
+# ============================================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+
+# ============================================================
+# Machine-local overrides (.zshrc.local, settings.local.json, ...)
+# but keep stow .local/ package dirs (bin/.local/...)
+# ============================================================
+*.local
+!*/.local/
+
+# ============================================================
+# Pre-reorg originals & transitional backups
+# ============================================================
+.archive/
+*.bak.*
+*.orig
