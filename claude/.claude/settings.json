@@ -1,4 +1,7 @@
 {
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
   "permissions": {
     "allow": [
       "Bash(npx *)",
@@ -22,7 +25,9 @@
       "Bash(pytest *)",
       "Bash(uv *)",
       "Bash(ruff *)",
-      "Bash(pixi *)"
+      "Bash(pixi *)",
+      "Bash(codex-fix:*)",
+      "Bash(codex-review:*)"
     ],
     "deny": [
       "Bash(rm -rf *)",
@@ -57,12 +62,9 @@
       "Read(**/credentials*)",
       "Read(**/*secret*)",
       "Read(**/*token*)"
-    ]
+    ],
+    "defaultMode": "auto"
   },
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  },
-  "teammateMode": "auto",
   "hooks": {
     "PostToolUse": [
       {
@@ -87,7 +89,9 @@
     "typescript-lsp@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
-  "agentPushNotifEnabled": true,
   "effortLevel": "high",
-  "theme": "dark"
+  "theme": "dark",
+  "teammateMode": "auto",
+  "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true
 }

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# codex_implementer — hand a STUCK, scoped task to Codex (gpt-5.5) as a second model.
+# Use when the Claude implementer + reviewer have looped on the same issue.
+# Codex edits with the workspace-write sandbox (changes limited to the repo).
+# Requires `codex login` on this machine (~/.codex/auth.json).
+#
+# Usage:
+#   codex-fix [-C <project-dir>] "<instruction: the failing review finding + exact files>"
+#
+# Example:
+#   codex-fix -C project-b \
+#     "Reviewer keeps flagging a race in project-b/src/loader.py reload(); make it
+#      idempotent. Touch ONLY loader.py."
+set -euo pipefail
+
+dir="."
+if [ "${1:-}" = "-C" ]; then dir="$2"; shift 2; fi
+prompt="${1:?usage: codex-fix [-C dir] \"<instruction (finding + exact files)>\"}"
+
+command -v codex >/dev/null 2>&1 || { echo "codex not found (npm i -g @openai/codex)" >&2; exit 127; }
+[ -f "$HOME/.codex/auth.json" ] || echo "warn: ~/.codex/auth.json missing — run 'codex login' first" >&2
+
+echo "→ codex exec (model from ~/.codex/config.toml, sandbox=workspace-write) in: $dir"
+codex exec -C "$dir" -s workspace-write "$prompt"
+echo "→ codex done. Inspect:  git -C \"$dir\" diff"

@@ -121,6 +121,10 @@ Constraints:
    cross-check vs PLAN.md, SendMessage findings back to that role +
    team-lead. Do NOT edit files. Mark your own task completed only after
    the last implementer's review pass.
+   Track findings per (file, issue): if you raise the SAME finding 3 times
+   to one implementer without resolution, SendMessage the team-lead
+   "codex escalation: <file> — <issue>" and let the lead invoke the
+   **codex-fallback** skill (codex-fix) for that scope.
 ```
 
 **smoke-tester** — replaces step 4 of the skeleton:
@@ -132,6 +136,11 @@ Constraints:
 ```
 
 ## After completion
+
+**Final cross-model review (always):** once the smoke-tester passes, before tearing
+down, run `codex-review --base <base-branch>` (or `codex-review` for uncommitted) and
+summarize Codex's findings to the user. Do not auto-apply; serious findings → a new
+Claude fix task. (See the **codex-fallback** skill.)
 
 Before deleting the team, shut down members cleanly:
 

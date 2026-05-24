@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# codex_reviewer — cross-model code review of the current changes (READ-ONLY; Codex never edits).
+# Run as the final pass of an agent-team change for a second pair of (different-model) eyes.
+# Requires `codex login` on this machine (~/.codex/auth.json).
+#
+# Usage:
+#   codex-review [-C <dir>] [--base <branch>] ["custom review instructions"]
+#   codex-review                                  # review uncommitted changes in cwd
+#   codex-review --base main "focus on concurrency + error handling"
+set -euo pipefail
+
+dir="."
+[ "${1:-}" = "-C" ] && { dir="$2"; shift 2; }
+base=""
+[ "${1:-}" = "--base" ] && { base="$2"; shift 2; }
+instr="${1:-}"
+
+command -v codex >/dev/null 2>&1 || { echo "codex not found (npm i -g @openai/codex)" >&2; exit 127; }
+cd "$dir"
+
+args=()
+if [ -n "$base" ]; then args+=(--base "$base"); else args+=(--uncommitted); fi
+[ -n "$instr" ] && args+=("$instr")
+
+echo "→ codex review ${args[*]} (read-only) in: $dir"
+codex review "${args[@]}"

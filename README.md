@@ -89,6 +89,9 @@ format-on-write hook + security allow/deny), `statusline.js`, `agents/`,
 - **`/advise <task>`** — unsure how to run something? Describe it and Claude
   recommends the best machine / permission mode / sandbox / template / commands
   for this setup.
+- **Codex cross-model fallback** (`codex-fallback` skill) — in agent-team runs, if the
+  reviewer flags the same spot 3×, the lead escalates that scoped fix to Codex
+  (`codex-fix`); a final `codex-review` cross-model pass runs at the end.
 
 ## Project templates
 
