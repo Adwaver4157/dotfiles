@@ -13,7 +13,7 @@ detects the OS and stows only the relevant packages.
 |-------|----------|
 | **Shared** | `claude`, `tmux`, `bin`, `kitty`, `starship` |
 | **macOS only** | `zsh`, `aerospace` |
-| **Linux only** | _(none yet — bash/etc. TODO)_ |
+| **Linux only** | `bash` |
 
 ```
 .
@@ -35,9 +35,11 @@ detects the OS and stows only the relevant packages.
 ## Install
 
 ```bash
-git clone <your-dotfiles-repo> ~/dotfiles
+git clone https://github.com/Adwaver4157/dotfiles.git ~/dotfiles
 cd ~/dotfiles && ./install.sh
 ```
+Fresh-machine steps (macOS & Linux GPU box, incl. GPU prerequisites): see
+[`docs/bootstrap.md`](docs/bootstrap.md).
 
 `install.sh` is **safe to re-run**. It installs pixi + a global CLI toolset,
 Claude Code, then `stow -R`s the OS-appropriate packages. Pre-existing real

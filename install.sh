@@ -37,7 +37,7 @@ esac
 COMMON_PKGS=(claude tmux bin kitty starship ssh)
 case "$OS_KIND" in
   macos) OS_PKGS=(zsh aerospace) ;;
-  linux) OS_PKGS=() ;;            # TODO: bash/etc. once Linux configs exist
+  linux) OS_PKGS=(bash) ;;        # Linux uses bash; macOS uses zsh
   *)     OS_PKGS=() ;;
 esac
 STOW_PKGS=("${COMMON_PKGS[@]}" "${OS_PKGS[@]}")
@@ -133,6 +133,8 @@ backup_existing_targets() {
   if [ "$OS_KIND" = macos ]; then
     backup_if_real "$HOME/.zshrc"
     backup_if_real "$HOME/.aerospace.toml"
+  elif [ "$OS_KIND" = linux ]; then
+    backup_if_real "$HOME/.bashrc"
   fi
 }
 
