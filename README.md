@@ -62,8 +62,8 @@ ruff uv pre-commit stylua clang-format pandoc starship
 | `tmux-dev [dir]` | 3-pane dev session (nvim / lazygit / claude) |
 | `ts` | fzf-pick a project under `~/workspace ~/projects …` then `tmux-dev` |
 | `z <name>` | zoxide jump |
-| `gc [-i intent]` | AI commit message (Claude Haiku) — needs `~/.anthropic_api_key` |
 | `mkcd`, `extract` | make+cd, smart archive extract |
+| `/commit`, `/advise` | Claude slash commands: concise commit / recommend a workflow |
 
 ## Machine-local overrides
 
@@ -83,8 +83,12 @@ format-on-write hook + security allow/deny), `statusline.js`, `agents/`,
 ## Agent teams & sandboxing
 
 - [`docs/agent-teams.md`](docs/agent-teams.md) — run **agent teams in auto mode**
-  for autonomous dev in two environments: mac local, and remote GPU Ubuntu via
-  Docker. Covers the `auto` vs `--dangerously-skip-permissions` deny distinction.
+  for autonomous dev: (A) mac local, (B) single-project remote GPU container,
+  (C) multi-project remote host with on-demand Docker. Covers the `auto` vs
+  `--dangerously-skip-permissions` deny distinction and the sshfs question.
+- **`/advise <task>`** — unsure how to run something? Describe it and Claude
+  recommends the best machine / permission mode / sandbox / template / commands
+  for this setup.
 
 ## Project templates
 
@@ -95,6 +99,9 @@ Reference templates to copy into projects (not stowed):
   microVM can't do GPU passthrough; the built-in `/sandbox` is incompatible with
   `docker`). Patterns A (devcontainer) / B (compose) / C (`docker exec`) +
   safety checklist + GPU-thrifty staged debugging.
+- `project-templates/multi-project/` — coordinate **several projects under one
+  parent** with agent teams (auto mode) on a remote host, launching per-project
+  Docker only when needed. Parent `CLAUDE.template.md` captures the topology.
 
 ## Uninstall
 

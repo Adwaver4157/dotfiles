@@ -99,6 +99,46 @@ docker exec -it project-claude tmux attach -t dev
 **Cleanup** when done: the skill shuts teammates down + `TeamDelete`; then
 `docker compose -f ... -f docker-compose.claude.yml down`.
 
+## C. Multiple projects under one parent (mixed Docker)
+
+When you work across several projects in one parent dir and only *some* operations
+need Docker, don't containerize the coordinator — **run Claude on the host in the
+parent dir** so agent teams can see and coordinate all projects, and launch
+per-project Docker only when a task needs it.
+
+- **Boundary = auto mode** (classifier + deny), not a container. Run as non-root;
+  never `--dangerously-skip-permissions` on the host. Prefer **rootless Docker** so
+  the agent's `docker` can't become host root.
+- **Write the topology down**: put a parent `CLAUDE.md` describing the projects,
+  their dependencies, which use Docker, and cross-project conventions — agents
+  can't coordinate what they can't see. Template:
+  `project-templates/multi-project/CLAUDE.template.md`. Add a per-project
+  `CLAUDE.md` with that project's build/test/docker commands and image name.
+
+```bash
+ssh gpu-box
+cd ~/work/parent          # parent of project-a, project-b, project-c
+tmux new -A -s dev
+claude                    # auto mode; planner surveys all 3, decomposes cross-project tasks
+```
+- Docker-needing ops: the agent runs `docker compose -f project-b/docker-compose.yml up -d`
+  on demand. Non-Docker projects are edited directly.
+- Heavy/risky single-project ops (long training): the host coordinator launches that
+  project's **ml-gpu container** (`docker compose -f project-b/docker-compose.claude.yml run ...`)
+  — the container is the boundary for that op, the host stays the coordinator.
+- auto-mode `deny` (`git push:*`) holds; pre-allow common docker subcommands
+  (`Bash(docker compose up:*)`) to cut interruptions (broad allows are dropped in
+  auto mode, narrow ones carry over).
+
+### sshfs — use it for the remote loop?
+
+**No, not as the main surface.** For remote GPU dev the compute (build / test / git /
+docker / GPU) must run **where the GPU is**, so run Claude **on the remote**. sshfs
+only mounts files onto your mac: `git`/`ripgrep`/builds over sshfs are slow, and the
+GPU isn't reachable from a local Claude. Use sshfs (or `vdd`) only for incidental
+browsing/copying of outputs; for editing prefer remote `nvim` or Remote-SSH. Never
+run a local Claude against an sshfs mount for GPU work.
+
 ## Quick reference
 
 | | Do | Don't |
