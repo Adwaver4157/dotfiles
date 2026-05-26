@@ -36,7 +36,7 @@ esac
 # Stow packages: shared set + OS-specific set.
 COMMON_PKGS=(claude tmux bin kitty starship ssh)
 case "$OS_KIND" in
-  macos) OS_PKGS=(zsh aerospace) ;;
+  macos) OS_PKGS=(zsh aerospace ssh-macos) ;;
   linux) OS_PKGS=(bash) ;;        # Linux uses bash; macOS uses zsh
   *)     OS_PKGS=() ;;
 esac
