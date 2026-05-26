@@ -66,12 +66,21 @@ _vdd_umount() {
 }
 
 # Smart rdp-ssh wrapper: auto start/connect, auto port-forward, ban-safe.
-#   vdd [-n] <ssh-host> [session] [extra rdp-ssh opts...]
+#   vdd [-n] [-L PORT[:HOST:PORT]]... <ssh-host> [session] [extra rdp-ssh opts...]
 #   -n : no port forwarding (for a 2nd terminal to the same session)
+#   -L : extra LocalForward on the shared master (repeatable). Shorthand "8080"
+#        expands to "8080:localhost:8080". Forwards are cancelled on exit.
 vdd() {
   local no_forward=false
-  [[ $1 == -n ]] && { no_forward=true; shift; }
-  local host=${1:?usage: vdd [-n] <ssh-host> [session] [rdp-ssh-opts...]}
+  local -a extra_forwards
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -n) no_forward=true; shift ;;
+      -L) extra_forwards+=("$2"); shift 2 ;;
+      *)  break ;;
+    esac
+  done
+  local host=${1:?usage: vdd [-n] [-L PORT[:HOST:PORT]]... <ssh-host> [session] [rdp-ssh-opts...]}
   local session=${2:-$VDD_DEFAULT_SESSION}
   local -a rest
   if (( $# >= 2 )); then shift 2; rest=("$@"); else shift; rest=(); fi
@@ -95,11 +104,24 @@ vdd() {
     print "→ ${action} '$session' on $host (no port forwarding)"
   fi
 
+  # Add any -L port forwards to the existing master (no new TCP).
+  local _spec
+  for _spec in "${extra_forwards[@]}"; do
+    [[ $_spec == *:*:* ]] || _spec="${_spec}:localhost:${_spec}"
+    ssh -O forward -L "$_spec" "$host" 2>/dev/null && print "→ forward +L $_spec"
+  done
+
   local t0; t0=$(date +%s)
   rdp-ssh -n "$session" -a "$host" "${pf[@]}" "${rest[@]}" "$action"
   local rc=$? dt=$(( $(date +%s) - t0 ))
   # A quick non-zero exit means we failed to connect → count it for backoff.
   if (( rc != 0 && dt < 15 )); then _ssh_fail "$host"; else _ssh_ok "$host"; fi
+
+  # Cancel any forwards we added; the master itself stays (ControlPersist).
+  for _spec in "${extra_forwards[@]}"; do
+    [[ $_spec == *:*:* ]] || _spec="${_spec}:localhost:${_spec}"
+    ssh -O cancel -L "$_spec" "$host" 2>/dev/null
+  done
 
   _vdd_umount "$host"
   return $rc
