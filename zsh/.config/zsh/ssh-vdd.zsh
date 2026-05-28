@@ -104,18 +104,23 @@ vdd() {
     print "→ ${action} '$session' on $host (no port forwarding)"
   fi
 
-  # Extra -L forwards via a dedicated background ssh (independent connection, so it
-  # works regardless of how rdp-ssh manages its own; killed when vdd exits).
-  local _fwd_pid=""
+  # Extra -L forwards via a dedicated ssh on its own control socket.
+  # Use -f (NOT "&"): ssh authenticates in the FOREGROUND, so it works on a
+  # password-only host/jump (a "&"-backgrounded ssh can't prompt → "suspended
+  # (tty output)"), then forks to background holding the forwards.
+  local _fwd_sock=""
   if (( ${#extra_forwards[@]} )); then
     local -a _Lopts; local _spec
     for _spec in "${extra_forwards[@]}"; do
       [[ $_spec == *:*:* ]] || _spec="${_spec}:localhost:${_spec}"
       _Lopts+=(-L "$_spec")
     done
-    ssh -N -o ControlPath=none "${_Lopts[@]}" "$host" &
-    _fwd_pid=$!
-    print "→ port-forward (pid $_fwd_pid): ${extra_forwards[*]}"
+    _fwd_sock=$(mktemp -u "${TMPDIR:-/tmp}/vdd-fwd.XXXXXX")
+    if ssh -fN -M -S "$_fwd_sock" "${_Lopts[@]}" "$host"; then
+      print "→ port-forward up: ${extra_forwards[*]}"
+    else
+      print -u2 "→ port-forward failed"; _fwd_sock=""
+    fi
   fi
 
   local t0; t0=$(date +%s)
@@ -124,8 +129,8 @@ vdd() {
   # A quick non-zero exit means we failed to connect → count it for backoff.
   if (( rc != 0 && dt < 15 )); then _ssh_fail "$host"; else _ssh_ok "$host"; fi
 
-  # Tear down the background port-forward ssh (if any).
-  [[ -n $_fwd_pid ]] && { kill "$_fwd_pid" 2>/dev/null && print "→ closed port-forward"; }
+  # Tear down the dedicated port-forward connection (if any).
+  [[ -n $_fwd_sock ]] && { ssh -O exit -S "$_fwd_sock" "$host" 2>/dev/null && print "→ closed port-forward"; }
 
   _vdd_umount "$host"
   return $rc
