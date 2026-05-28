@@ -68,8 +68,8 @@ _vdd_umount() {
 # Smart rdp-ssh wrapper: auto start/connect, auto port-forward, ban-safe.
 #   vdd [-n] [-L PORT[:HOST:PORT]]... <ssh-host> [session] [extra rdp-ssh opts...]
 #   -n : no port forwarding (for a 2nd terminal to the same session)
-#   -L : extra LocalForward on the shared master (repeatable). Shorthand "8080"
-#        expands to "8080:localhost:8080". Forwards are cancelled on exit.
+#   -L : extra LocalForward via a dedicated background ssh (repeatable). Shorthand
+#        "8080" expands to "8080:localhost:8080". Closed when vdd exits.
 vdd() {
   local no_forward=false
   local -a extra_forwards
@@ -104,12 +104,19 @@ vdd() {
     print "→ ${action} '$session' on $host (no port forwarding)"
   fi
 
-  # Add any -L port forwards to the existing master (no new TCP).
-  local _spec
-  for _spec in "${extra_forwards[@]}"; do
-    [[ $_spec == *:*:* ]] || _spec="${_spec}:localhost:${_spec}"
-    ssh -O forward -L "$_spec" "$host" 2>/dev/null && print "→ forward +L $_spec"
-  done
+  # Extra -L forwards via a dedicated background ssh (independent connection, so it
+  # works regardless of how rdp-ssh manages its own; killed when vdd exits).
+  local _fwd_pid=""
+  if (( ${#extra_forwards[@]} )); then
+    local -a _Lopts; local _spec
+    for _spec in "${extra_forwards[@]}"; do
+      [[ $_spec == *:*:* ]] || _spec="${_spec}:localhost:${_spec}"
+      _Lopts+=(-L "$_spec")
+    done
+    ssh -N -o ControlPath=none "${_Lopts[@]}" "$host" &
+    _fwd_pid=$!
+    print "→ port-forward (pid $_fwd_pid): ${extra_forwards[*]}"
+  fi
 
   local t0; t0=$(date +%s)
   rdp-ssh -n "$session" -a "$host" "${pf[@]}" "${rest[@]}" "$action"
@@ -117,11 +124,8 @@ vdd() {
   # A quick non-zero exit means we failed to connect → count it for backoff.
   if (( rc != 0 && dt < 15 )); then _ssh_fail "$host"; else _ssh_ok "$host"; fi
 
-  # Cancel any forwards we added; the master itself stays (ControlPersist).
-  for _spec in "${extra_forwards[@]}"; do
-    [[ $_spec == *:*:* ]] || _spec="${_spec}:localhost:${_spec}"
-    ssh -O cancel -L "$_spec" "$host" 2>/dev/null
-  done
+  # Tear down the background port-forward ssh (if any).
+  [[ -n $_fwd_pid ]] && { kill "$_fwd_pid" 2>/dev/null && print "→ closed port-forward"; }
 
   _vdd_umount "$host"
   return $rc
