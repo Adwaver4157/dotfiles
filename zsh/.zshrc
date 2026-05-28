@@ -171,3 +171,13 @@ ts() {
   dir=$(find ~/workspace ~/projects ~/work ~/dotfiles -maxdepth 2 -type d 2>/dev/null | fzf) || return
   tmux-dev "$dir"
 }
+
+# Check / free a TCP port.   port 8080   |   port -k 8080 (kill listener)
+port() {
+  if [ "$1" = "-k" ]; then
+    local pids; pids=$(lsof -ti:"${2:?usage: port -k <PORT>}" 2>/dev/null)
+    if [ -n "$pids" ]; then printf '%s\n' "$pids" | xargs kill && echo "killed :$2"; else echo ":$2 — nothing listening"; fi
+    return
+  fi
+  lsof -nP -iTCP:"${1:?usage: port <PORT> | port -k <PORT>}" -sTCP:LISTEN || echo ":$1 is free"
+}
