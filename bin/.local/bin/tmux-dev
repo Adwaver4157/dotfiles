@@ -46,21 +46,23 @@ if tmux has-session -t="$SESSION" 2>/dev/null; then
 fi
 
 # ---- 新規セッションをdetached状態で作成 ----
-tmux new-session -d -s "$SESSION" -c "$DIR" -n editor
+# ペイン番号(base-index/pane-base-index)に依存しないよう、
+# split のたびに返るペインID(%N)を捕捉して使う
+LEFT_PANE="$(tmux new-session -d -s "$SESSION" -c "$DIR" -n editor -P -F '#{pane_id}')"
 
 # 左ペイン: エディタ
-tmux send-keys -t "$SESSION:editor.0" "$LEFT_CMD" Enter
+tmux send-keys -t "$LEFT_PANE" "$LEFT_CMD" Enter
 
 # 右に分割（横方向）
-tmux split-window -h -l "$RIGHT_WIDTH" -c "$DIR" -t "$SESSION:editor.0"
-tmux send-keys -t "$SESSION:editor.1" "$TOP_RIGHT_CMD" Enter
+TOP_RIGHT_PANE="$(tmux split-window -h -l "$RIGHT_WIDTH" -c "$DIR" -t "$LEFT_PANE" -P -F '#{pane_id}')"
+tmux send-keys -t "$TOP_RIGHT_PANE" "$TOP_RIGHT_CMD" Enter
 
 # 右ペインを上下に分割
-tmux split-window -v -l "$RIGHT_SPLIT" -c "$DIR" -t "$SESSION:editor.1"
-tmux send-keys -t "$SESSION:editor.2" "$BOT_RIGHT_CMD" Enter
+BOT_RIGHT_PANE="$(tmux split-window -v -l "$RIGHT_SPLIT" -c "$DIR" -t "$TOP_RIGHT_PANE" -P -F '#{pane_id}')"
+tmux send-keys -t "$BOT_RIGHT_PANE" "$BOT_RIGHT_CMD" Enter
 
 # 左ペイン（エディタ）にフォーカス
-tmux select-pane -t "$SESSION:editor.0"
+tmux select-pane -t "$LEFT_PANE"
 
 # attach / switch
 tmux "$SWITCH_CMD" -t "$SESSION"
