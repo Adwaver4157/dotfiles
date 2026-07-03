@@ -73,6 +73,27 @@ docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi   # ve
 ```
 Machine-local config in `~/.bashrc.local` (e.g. `echo "sk-ant-..." > ~/.anthropic_api_key`, CUDA paths).
 
+### daily-report on a remote box
+
+The skill runs wherever Claude Code runs — session transcripts live on THAT
+machine, so a remote session's report must be generated on the remote.
+
+```bash
+cd ~/dotfiles && git pull && ./install.sh      # deploy/refresh ~/.claude/skills
+echo 'export TZ=Asia/Tokyo' >> ~/.bashrc.local # servers default to UTC; without
+                                               # this, JST morning work (before
+                                               # 09:00) buckets into yesterday's
+                                               # report date
+```
+
+Notion sync needs a Notion MCP connector, which headless boxes usually lack —
+answer `skip` on the first `/daily-report` run (writes per-project `DISABLED`;
+nothing is asked again). Reports land in `<project>/.claude/daily-reports/` —
+commit them to the project repo or read them over ssh; sync to Notion from the
+Mac if wanted. Container sessions (ml-gpu template): the skill must also be
+visible in the CONTAINER's `~/.claude` (the `claude_config` volume) — check
+`ls ~/.claude/skills` inside before relying on it.
+
 ### Then develop
 ```bash
 cd ~/work/parent && tmux new -A -s dev && claude     # auto mode; multi-project per docs/agent-teams.md §C
