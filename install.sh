@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# Idempotent dotfiles installer (pixi + GNU stow). Safe to re-run from any
-# partial state. Each step is a no-op if already satisfied.
+# Idempotent dotfiles installer (Brewfile on macOS, pixi on Linux, GNU stow).
+# Safe to re-run from any partial state. Each step is a no-op if already
+# satisfied.
 #
-#   1. Install pixi (if missing)
-#   2. pixi global install <tools>  (idempotent per tool)
+#   1. Install pixi (if missing; used for per-project envs on both OSes)
+#   2. Tools: macOS → `brew bundle` from ./Brewfile (CLI + casks + VS Code +
+#      go/npm globals); Linux → pixi global install <tools>
 #   3. Install Claude Code (if `claude` not on PATH)
 #   4. git submodule update --init --recursive (no-op if no submodules)
 #   5. Pre-create ~/.config, ~/.local, ~/.claude as REAL dirs (stow folds at
@@ -19,8 +21,8 @@
 # Cross-platform: macOS + Linux configs live side by side; the OS is detected
 # here and only the relevant packages are stowed.
 #
-# GUI apps (aerospace, kitty, utm, fonts, VS Code extensions) are NOT installed
-# by this script — see docs/macos-extras.md.
+# Homebrew itself is NOT installed by this script (its installer needs an
+# interactive sudo) — on a fresh Mac install it first, then re-run.
 
 set -u
 
@@ -34,7 +36,7 @@ case "$(uname -s)" in
 esac
 
 # Stow packages: shared set + OS-specific set.
-COMMON_PKGS=(claude tmux bin kitty starship ssh)
+COMMON_PKGS=(claude tmux bin kitty nvim starship ssh)
 case "$OS_KIND" in
   macos) OS_PKGS=(zsh aerospace ssh-macos) ;;
   linux) OS_PKGS=(bash) ;;        # Linux uses bash; macOS uses zsh
@@ -63,9 +65,28 @@ ensure_pixi() {
 }
 
 #------------------------------------------------------------------------------
-# 2. pixi global tools (per-tool, individually idempotent)
+# 2a. macOS tools via Homebrew Bundle (Brewfile = source of truth on macOS)
+#------------------------------------------------------------------------------
+ensure_brew_bundle() {
+  [ "$OS_KIND" = macos ] || return 0
+  if ! have brew; then
+    warn "Homebrew not installed — install it first (https://brew.sh), then re-run:"
+    warn '  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+    return
+  fi
+  log "brew bundle (Brewfile: CLI tools, casks, VS Code extensions, go/npm globals)"
+  if brew bundle install --file="$DOTFILES_DIR/Brewfile" --no-upgrade; then
+    ok "brew bundle"
+  else
+    warn "brew bundle had failures (continuing); re-run 'brew bundle --file=$DOTFILES_DIR/Brewfile' to retry"
+  fi
+}
+
+#------------------------------------------------------------------------------
+# 2b. Linux tools via pixi global (per-tool, individually idempotent)
 #------------------------------------------------------------------------------
 ensure_pixi_tools() {
+  [ "$OS_KIND" = linux ] || { skip "pixi global tools (macOS uses Brewfile)"; return; }
   if ! have pixi; then warn "pixi not on PATH; skipping global tools"; return; fi
   local tools=(
     stow git curl wget jq bc tmux=3.4 nvim nodejs python=3.11
@@ -117,6 +138,11 @@ ensure_real_dirs() {
 backup_if_real() {
   local p="$1"
   [ -L "$p" ] && return 0
+  # A real dir already holding symlinks into the repo is stow-managed
+  # (--no-folding keeps dirs real); backing it up would just churn on re-runs.
+  if [ -d "$p" ] && find "$p" -maxdepth 3 -type l -lname "*dotfiles*" 2>/dev/null | grep -q .; then
+    return 0
+  fi
   if [ -e "$p" ]; then
     mv "$p" "${p}.bak.${TS}" && ok "backup: $p -> ${p}.bak.${TS}" || warn "backup failed for $p"
   fi
@@ -128,6 +154,8 @@ backup_existing_targets() {
   backup_if_real "$HOME/.config/kitty/kitty.conf"
   backup_if_real "$HOME/.config/starship.toml"
   backup_if_real "$HOME/.local/bin/tmux-dev"
+  backup_if_real "$HOME/.local/bin/rdp-ssh"
+  backup_if_real "$HOME/.config/nvim"
   for f in CLAUDE.md settings.json statusline.js; do backup_if_real "$HOME/.claude/$f"; done
   for d in agents commands skills hooks; do backup_if_real "$HOME/.claude/$d"; done
   if [ "$OS_KIND" = macos ]; then
@@ -207,6 +235,7 @@ main() {
   if [ "$action" = uninstall ]; then run_unstow; log "Done."; return 0; fi
 
   ensure_pixi
+  ensure_brew_bundle
   ensure_pixi_tools
   ensure_claude_code
   ensure_submodules
@@ -223,8 +252,8 @@ main() {
     - Put machine-local config (anyenv, ANTHROPIC_API_KEY, host paths) in ~/.zshrc.local
     - In tmux, press prefix+I (Ctrl-a I) to install tpm plugins
     - ~/.ssh/config now Includes config.d/*.conf (ControlMaster + ban-safe keepalive)
-    - macOS sshfs (for vdd mounts) needs fuse-t — see docs/macos-extras.md
-    - GUI apps & VS Code extensions: see docs/macos-extras.md
+    - macOS: CLI tools, casks (incl. fuse-t for vdd sshfs), VS Code extensions,
+      go/npm globals all come from ./Brewfile — see docs/macos-extras.md for notes
 EOF
 }
 

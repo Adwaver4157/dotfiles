@@ -15,17 +15,24 @@ files to `*.bak.<TS>` and leaves existing symlinks alone.
 
 ## macOS
 
+Prerequisite — Homebrew (interactive sudo, so not scripted):
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
 ```bash
 cd ~/dotfiles && ./install.sh
 ```
-Installs pixi + CLI tools, Claude Code; stows `zsh aerospace` + the shared set
-(`claude tmux bin kitty starship ssh`).
+Runs `brew bundle` from `Brewfile` (CLI tools, casks incl. kitty/aerospace/
+fuse-t/fonts, VS Code extensions, go/npm globals), installs pixi + Claude Code;
+stows `zsh aerospace ssh-macos` + the shared set
+(`claude tmux bin kitty nvim starship ssh`).
 
 Post-install:
 ```bash
 exec zsh
-brew install starship zsh-autosuggestions zsh-syntax-highlighting   # prompt + suggestions
 # in tmux: prefix(C-a) + I   to install plugins
+# nvim: plugins auto-install on first launch (pinned by nvim-pack-lock.json)
 ```
 
 ---
@@ -46,8 +53,8 @@ On Linux this:
 - installs **pixi** + the CLI toolset (ripgrep/fd/fzf/zoxide/bat/eza/lazygit/gh/nvim/
   tmux/starship/ruff/uv/… **+ xclip, sshfs**) — no brew, no sudo,
 - installs **Claude Code** (`curl claude.ai/install.sh`),
-- stows **`bash`** + the shared set (`claude tmux bin starship ssh`; `kitty` is a
-  harmless unused symlink on a headless box),
+- stows **`bash`** + the shared set (`claude tmux bin nvim starship ssh`; `kitty`
+  is a harmless unused symlink on a headless box),
 - wires `~/.ssh/config` Include (ControlMaster + keepalive) and tpm.
 
 Your previous `~/.bashrc` is backed up to `~/.bashrc.bak.<TS>` — merge anything you

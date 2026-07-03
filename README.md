@@ -1,8 +1,9 @@
 # dotfiles
 
-Cross-platform (macOS + Linux) dev setup managed with **GNU stow** + **pixi**,
-with Claude Code global config. Inspired by a stow-based layout; carries my own
-Brewfile-era tooling, Claude agent-team setup, kitty, aerospace, and tmux-dev.
+Cross-platform (macOS + Linux) dev setup managed with **GNU stow**, with Claude
+Code global config. Tools come from the **`Brewfile` on macOS** and **pixi
+global on Linux**; pixi also drives per-project envs everywhere. Carries the
+Claude agent-team setup, kitty, aerospace, nvim (kickstart-based), and tmux-dev.
 
 ## Layout
 
@@ -11,25 +12,27 @@ detects the OS and stows only the relevant packages.
 
 | Scope | Packages |
 |-------|----------|
-| **Shared** | `claude`, `tmux`, `bin`, `kitty`, `starship` |
-| **macOS only** | `zsh`, `aerospace` |
+| **Shared** | `claude`, `tmux`, `bin`, `kitty`, `nvim`, `starship`, `ssh` |
+| **macOS only** | `zsh`, `aerospace`, `ssh-macos` |
 | **Linux only** | `bash` |
 
 ```
 .
-├── install.sh                  # idempotent pixi + stow installer
+├── install.sh                  # idempotent installer (brew bundle / pixi + stow)
+├── Brewfile                    # macOS tools: formulae, casks, VS Code, go/npm
 ├── .stowrc                     # --no-folding (stow links files, not dirs)
-├── docs/macos-extras.md        # GUI apps / VS Code / heavy brew pkgs (manual)
+├── docs/macos-extras.md        # Homebrew / fuse-t / kitty-adoption notes
 ├── claude/.claude/             # → ~/.claude/
 │   ├── CLAUDE.md  settings.json  statusline.js
 │   ├── agents/                 # planner / tester / implementer / reviewer
 │   ├── commands/  hooks/  skills/
+├── nvim/.config/nvim/          # kickstart.nvim-based (init.lua + lock file)
 ├── tmux/.tmux.conf
 ├── zsh/.zshrc
 ├── kitty/.config/kitty/kitty.conf
 ├── starship/.config/starship.toml
 ├── aerospace/.aerospace.toml
-└── bin/.local/bin/tmux-dev
+└── bin/.local/bin/              # tmux-dev, rdp-ssh, codex-fix, codex-review
 ```
 
 ## Install
@@ -41,21 +44,25 @@ cd ~/dotfiles && ./install.sh
 Fresh-machine steps (macOS & Linux GPU box, incl. GPU prerequisites): see
 [`docs/bootstrap.md`](docs/bootstrap.md).
 
-`install.sh` is **safe to re-run**. It installs pixi + a global CLI toolset,
-Claude Code, then `stow -R`s the OS-appropriate packages. Pre-existing real
-files are timestamp-backed up (`*.bak.<TS>`); existing symlinks are left alone.
+`install.sh` is **safe to re-run**. It installs the toolset (macOS: `brew
+bundle` from `Brewfile`; Linux: pixi global), Claude Code, then `stow -R`s the
+OS-appropriate packages. Pre-existing real files are timestamp-backed up
+(`*.bak.<TS>`); existing symlinks and stow-managed dirs are left alone.
 
-GUI apps, VS Code extensions, and heavy brew-only packages are **not** installed
-by the script — see [`docs/macos-extras.md`](docs/macos-extras.md).
+## Where tools come from
 
-## What pixi installs
+- **macOS — [`Brewfile`](Brewfile)**: CLI formulae, GUI casks (aerospace, kitty,
+  utm, fuse-t, fonts, …), VS Code extensions, go/npm globals. Homebrew itself
+  is a manual prerequisite — see [`docs/macos-extras.md`](docs/macos-extras.md).
+  After changing tools: `brew bundle dump --file=~/dotfiles/Brewfile --force`
+  and commit.
+- **Linux — pixi global** (no sudo, no brew):
 
-```
-stow git curl wget jq bc tmux=3.4 nvim nodejs python=3.11
-ripgrep fd-find fzf zoxide bat eza lazygit gh tree htop
-ruff uv pre-commit stylua clang-format pandoc starship
-```
-(Linux also gets `xclip`.)
+  ```
+  stow git curl wget jq bc tmux=3.4 nvim nodejs python=3.11
+  ripgrep fd-find fzf zoxide bat eza lazygit gh tree htop
+  ruff uv pre-commit stylua clang-format pandoc starship xclip sshfs
+  ```
 
 ## Daily commands
 
@@ -116,6 +123,7 @@ cd ~/dotfiles && ./install.sh --uninstall   # stow -D the packages
 
 ## Notes
 
-- **Neovim** is managed separately (live `~/.config/nvim`), not yet a package
-  here. Add as a stow package or git submodule when ready.
+- **Neovim** (`nvim/` package) is a [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim)
+  snapshot plus local additions (smart-splits, oil.nvim); plugin versions are
+  pinned by `nvim-pack-lock.json`. Upstream kickstart updates are merged by hand.
 - Pre-reorg originals are archived under `.archive/pre-reorg/` (gitignored).
