@@ -194,9 +194,7 @@ cask "grads"
 cask "iterm2"
 # Menu bar manager
 cask "jordanbaird-ice"
-# GPU-based terminal emulator (config: kitty/ stow package). NOTE: on the
-# original Mac kitty 0.37 was a direct download; take it over with
-# `brew install --cask --adopt --force kitty` when upgrading.
+# GPU-based terminal emulator (config: kitty/ stow package)
 cask "kitty"
 # Reverse proxy, secure introspectable tunnels to localhost
 cask "ngrok"
