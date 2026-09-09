@@ -281,5 +281,38 @@
   "theme": "dark",
   "teammateMode": "auto",
   "agentPushNotifEnabled": true,
-  "skipAutoPermissionPrompt": true
+  "skipAutoPermissionPrompt": true,
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "Bash(pixi run:*) in /home/shared/household",
+      "Bash(pixi install) in /home/shared/household",
+      "Bash(ruff check:*) in /home/shared/household"
+    ],
+    "environment": [
+      "### Org-wide",
+      "**Organization**: None configured",
+      "**Cloud provider(s)**: None configured",
+      "**Repository visibility**: assume private unless the remote host and repo name indicate otherwise, or a visibility check in the transcript shows public (no remote configured for this repo; visibility not queryable)",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: None configured",
+      "**Default / protected branches**: unknown — no git remote configured, origin/HEAD unset, and repo visibility/branch protection not queryable via gh",
+      "**CI/CD deploy targets**: None configured",
+      "**Network posture**: None configured",
+      "**Source control**: The trusted repo (no remotes configured — local-only checkout at /home/shared/household)",
+      "**Trusted internal domains**: None configured",
+      "**Trusted cloud buckets**: airoa-ph2-terraform-state-household-dev (config-derived — not a confirmed upload destination; uploads of local data still require confirmation)",
+      "**Key internal services**: None configured",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: any file or store holding personal data, confidential business data, credentials, regulated data, or similarly sensitive material; preserve exact handles when known and share only with audiences cleared at the [named+specifics] bar; note this repo tree contains numerous .env / .env.example files and Terraform state/config paths (e.g. household-apps/.github/workflows/release-deploy-prod.yml, household-app2/infra/bff/*, household-app2/infra/web/*) that should be treated as sensitive",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment (hyphen/underscore/dot-delimited — e.g. matches `prod-db`, not `producer`); this repo's own release-deploy-prod.yml workflow and terraform-delivery.yml pipelines fall under this heuristic",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment — this repo's Terraform under household-app2/infra/ and household-apps/.github/scripts/*terraform* fall under this heuristic",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development",
+      "**Trusted repo**: The git repository the agent started in (/home/shared/household), its working directory — no remotes configured, so treat as local-only; no visibility-based clearance applies since there is no remote to scope publication against",
+      "**Org-specific CLIs**: pixi (used routinely, 47× in this project); codex-review, codex, prov, tailscale seen occasionally — no organization configured to attribute these to"
+    ]
+  }
 }
