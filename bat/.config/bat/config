@@ -1,0 +1,4 @@
+# bat (aliased as `cat` in zsh/.zshrc): keep syntax highlighting, drop
+# line numbers / grid / header so terminal copy-paste stays clean.
+# Use `bat -n FILE` or `bat --style=full FILE` when line numbers are wanted.
+--style=plain
