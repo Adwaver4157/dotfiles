@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Universal tmux copy sink: stdin -> every clipboard that could be watching.
+#
+#   * every local X display (/tmp/.X11-unix/X*) via xclip
+#       :1 = the physical desktop session, :2 = the virtual_desktop container
+#   * OSC 52 written straight to every attached tmux client tty
+#       -> reaches the terminal at the far end of an ssh attachment
+#          (kitty applies it; an outer tmux with set-clipboard on forwards it)
+#
+# Terminals that do not understand OSC 52 (VTE 系: GNOME Terminal/terminator)
+# silently discard it, a missing X display just skips that xclip write, and a
+# machine without xclip (mac) keeps the OSC 52 leg -- so firing everything,
+# every time, is safe on both linux-direct and ssh attachments.
+# Used by the copy bindings in tmux.conf (copy-pipe-and-cancel).
+set -u
+
+data=$(cat)
+[ -n "$data" ] || exit 0
+
+if command -v xclip >/dev/null 2>&1; then
+    for sock in /tmp/.X11-unix/X*; do
+        [ -e "$sock" ] || continue
+        printf %s "$data" \
+            | timeout 2 xclip -in -selection clipboard -display ":${sock##*/X}" \
+              2>/dev/null || true
+    done
+fi
+
+if command -v tmux >/dev/null 2>&1 && command -v base64 >/dev/null 2>&1; then
+    b64=$(printf %s "$data" | base64 | tr -d '\n')
+    for tty in $(tmux list-clients -F '#{client_tty}' 2>/dev/null); do
+        if [ -w "$tty" ]; then
+            printf '\033]52;c;%s\007' "$b64" > "$tty" 2>/dev/null || true
+        fi
+    done
+fi
+exit 0
