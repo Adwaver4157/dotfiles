@@ -36,7 +36,7 @@ case "$(uname -s)" in
 esac
 
 # Stow packages: shared set + OS-specific set.
-COMMON_PKGS=(claude tmux bin kitty nvim starship ssh)
+COMMON_PKGS=(claude tmux bin kitty nvim starship ssh bat)
 case "$OS_KIND" in
   macos) OS_PKGS=(zsh aerospace ssh-macos) ;;
   linux) OS_PKGS=(bash) ;;        # Linux uses bash; macOS uses zsh
