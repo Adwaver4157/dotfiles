@@ -42,3 +42,7 @@ Thumbs.db
 .archive/
 *.bak.*
 *.orig
+
+# Python bytecode caches inside tracked skills
+__pycache__/
+*.pyc
