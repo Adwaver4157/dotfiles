@@ -18,8 +18,16 @@ instr="${1:-}"
 command -v codex >/dev/null 2>&1 || { echo "codex not found (npm i -g @openai/codex)" >&2; exit 127; }
 cd "$dir"
 
+# codex-cli >=0.147 rejects `--uncommitted` together with a PROMPT
+# ("the argument '--uncommitted' cannot be used with '[PROMPT]'"), and reviewing
+# uncommitted work is already the default. So only pass the flag when there is
+# no prompt to conflict with.
 args=()
-if [ -n "$base" ]; then args+=(--base "$base"); else args+=(--uncommitted); fi
+if [ -n "$base" ]; then
+    args+=(--base "$base")
+elif [ -z "$instr" ]; then
+    args+=(--uncommitted)
+fi
 [ -n "$instr" ] && args+=("$instr")
 
 echo "→ codex review ${args[*]} (read-only) in: $dir"
