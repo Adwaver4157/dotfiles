@@ -19,6 +19,21 @@
 - git push は私が手動で行う。エージェントは push しない
 - force push, reset --hard, branch -D は禁止
 
+## Worktree（実装作業の既定）
+- コードを変更する作業は原則 git worktree の中で行い、元のチェックアウトの作業ブランチに触れない
+- 例外（worktree を作らない）: 読むだけの調査、1〜2ファイルの軽微な修正、設定ファイルの変更
+- ブランチは `origin/<default>` から切る。ローカル HEAD の未完成な作業を持ち込まない
+- multi-repo workspace（`~/household` など、セッション cwd 自体が git repo でない場合）:
+  対象リポジトリで `git worktree add -b <branch> .claude/worktrees/<name> origin/main` を実行してから、
+  EnterWorktree に `path` を渡して入る（`name` 指定は cwd が repo でないと通らない）
+- 作業開始時に worktree のパス・ブランチ・base ref を報告する
+- 後片付けは明示的に行う。放置しない:
+  - 完了/破棄した → ExitWorktree(`keep`) → `git worktree remove <path>` → `git branch -d <branch>`
+    （`git worktree add` で自分で作った worktree は ExitWorktree(`remove`) では消えないので手動で消す）
+  - 続きをやる → keep して、残したパスとブランチを報告する
+- 未コミットの変更やマージ前のコミットが残っている worktree は消さない。消す前に必ず私に確認する
+- 作業の区切りでは `git worktree list` を棚卸しし、不要な残骸があれば報告する
+
 ## 検証
 - テストを書いてから実装するのが基本（TDD）
 - 「動くはず」ではなく実行確認した結果のみ「動いた」と報告する
