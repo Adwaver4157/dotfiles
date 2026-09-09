@@ -177,8 +177,6 @@ brew "zoxide"
 brew "zsh-autosuggestions"
 # Fish shell like syntax highlighting for zsh
 brew "zsh-syntax-highlighting"
-# Overleaf CLI - sync LaTeX projects from the command line
-brew "aloth/tap/olcli"
 # AeroSpace is an i3-like tiling window manager for macOS
 cask "nikitabobko/tap/aerospace"
 # Automated testing of webapps for Google Chrome
@@ -214,7 +212,6 @@ vscode "eamodio.gitlens"
 vscode "github.codespaces"
 vscode "golang.go"
 vscode "google.geminicodeassist"
-vscode "iamhyc.overleaf-workshop"
 vscode "mhutchie.git-graph"
 vscode "ms-azuretools.vscode-containers"
 vscode "ms-azuretools.vscode-docker"
@@ -260,6 +257,8 @@ go "golang.org/x/tools/cmd/goimports"
 go "golang.org/x/tools/gopls"
 go "honnef.co/go/tools/cmd/staticcheck"
 npm "@akari-inc/amath"
+# Overleaf CLI (now installed via npm, not the brew tap)
+npm "@aloth/olcli"
 npm "@openai/codex"
 npm "typescript"
 npm "yarn"
