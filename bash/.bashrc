@@ -79,4 +79,9 @@ port() {
 }
 
 # --- Machine-local (anthropic key, host paths, anything not committed) ---
+if [ -z "$SSH_AUTH_SOCK" ]; then
+  eval "$(ssh-agent -s)" > /dev/null
+fi
+
 [ -f ~/.bashrc.local ] && . ~/.bashrc.local
+. "$HOME/.cargo/env"
