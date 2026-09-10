@@ -45,7 +45,8 @@ Fresh-machine steps (macOS & Linux GPU box, incl. GPU prerequisites): see
 [`docs/bootstrap.md`](docs/bootstrap.md).
 
 `install.sh` is **safe to re-run**. It installs the toolset (macOS: `brew
-bundle` from `Brewfile`; Linux: pixi global), Claude Code, then `stow -R`s the
+bundle` from `Brewfile`; Linux: pixi global), Claude Code, Codex CLI (official
+standalone installer, skipped if `codex` is already on PATH), then `stow -R`s the
 OS-appropriate packages. Pre-existing real files are timestamp-backed up
 (`*.bak.<TS>`); existing symlinks and stow-managed dirs are left alone.
 

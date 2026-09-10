@@ -52,7 +52,8 @@ cd ~/dotfiles && ./install.sh
 On Linux this:
 - installs **pixi** + the CLI toolset (ripgrep/fd/fzf/zoxide/bat/eza/lazygit/gh/nvim/
   tmux/starship/ruff/uv/… **+ xclip, sshfs**) — no brew, no sudo,
-- installs **Claude Code** (`curl claude.ai/install.sh`),
+- installs **Claude Code** (`curl claude.ai/install.sh`) and **Codex CLI**
+  (`curl chatgpt.com/codex/install.sh`, standalone → `~/.local/bin/codex`),
 - stows **`bash`** + the shared set (`claude tmux bin nvim starship ssh`; `kitty`
   is a harmless unused symlink on a headless box),
 - wires `~/.ssh/config` Include (ControlMaster + keepalive) and tpm.
@@ -68,7 +69,7 @@ claude                         # log in. agent teams auto mode needs Anthropic A
 ```
 Optional:
 ```bash
-npm i -g @openai/codex && codex login          # for the codex-fallback (cross-model)
+codex login                                    # for the codex-fallback (cross-model); CLI itself is installed by install.sh
 docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi   # verify GPU
 ```
 Machine-local config in `~/.bashrc.local` (e.g. `echo "sk-ant-..." > ~/.anthropic_api_key`, CUDA paths).
