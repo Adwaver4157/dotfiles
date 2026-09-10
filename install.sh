@@ -7,6 +7,7 @@
 #   2. Tools: macOS → `brew bundle` from ./Brewfile (CLI + casks + VS Code +
 #      go/npm globals); Linux → pixi global install <tools>
 #   3. Install Claude Code (if `claude` not on PATH)
+#   3b. Install Codex CLI (if `codex` not on PATH; official standalone installer)
 #   4. git submodule update --init --recursive (no-op if no submodules)
 #   5. Pre-create ~/.config, ~/.local, ~/.claude as REAL dirs (stow folds at
 #      file level thanks to .stowrc --no-folding)
@@ -107,6 +108,24 @@ ensure_claude_code() {
   if have claude; then skip "claude code already installed"; return; fi
   log "Installing Claude Code"
   curl -fsSL https://claude.ai/install.sh | bash && ok "claude code installed" || warn "claude code install failed"
+}
+
+#------------------------------------------------------------------------------
+# 3b. Codex CLI (OpenAI) — needed by bin/codex-fix, bin/codex-review
+#     Official standalone installer: binary -> ~/.local/bin/codex, releases
+#     under ~/.codex/packages/standalone. `codex login` afterwards is manual.
+#------------------------------------------------------------------------------
+ensure_codex() {
+  # claude/codex installers both drop into ~/.local/bin; make sure we can see it
+  export PATH="$HOME/.local/bin:$PATH"
+  if have codex; then skip "codex already installed ($(codex --version 2>/dev/null))"; return; fi
+  log "Installing Codex CLI"
+  # CODEX_NON_INTERACTIVE=1: no "Start Codex now?" / uninstall-conflict prompts
+  # (fine without a tty). ~/.local/bin being on PATH here makes the installer
+  # skip its own rc-file edit — the stowed .bashrc/.zshrc already export it, and
+  # after stow those rc files are symlinks into this repo.
+  curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh \
+    && ok "codex installed" || warn "codex install failed (re-run, or: curl -fsSL https://chatgpt.com/codex/install.sh | sh)"
 }
 
 #------------------------------------------------------------------------------
@@ -238,6 +257,7 @@ main() {
   ensure_brew_bundle
   ensure_pixi_tools
   ensure_claude_code
+  ensure_codex
   ensure_submodules
   ensure_real_dirs
   backup_existing_targets
@@ -251,6 +271,7 @@ main() {
     - Open a new shell (or 'source ~/.zshrc') to pick up PATH changes
     - Put machine-local config (anyenv, ANTHROPIC_API_KEY, host paths) in ~/.zshrc.local
     - In tmux, press prefix+I (Ctrl-a I) to install tpm plugins
+    - 'codex login' once (needed by codex-fix / codex-review, the cross-model fallback)
     - ~/.ssh/config now Includes config.d/*.conf (ControlMaster + ban-safe keepalive)
     - macOS: CLI tools, casks (incl. fuse-t for vdd sshfs), VS Code extensions,
       go/npm globals all come from ./Brewfile — see docs/macos-extras.md for notes

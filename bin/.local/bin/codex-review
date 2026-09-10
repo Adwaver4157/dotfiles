@@ -15,7 +15,7 @@ base=""
 [ "${1:-}" = "--base" ] && { base="$2"; shift 2; }
 instr="${1:-}"
 
-command -v codex >/dev/null 2>&1 || { echo "codex not found (npm i -g @openai/codex)" >&2; exit 127; }
+command -v codex >/dev/null 2>&1 || { echo "codex not found (run ~/dotfiles/install.sh, or: curl -fsSL https://chatgpt.com/codex/install.sh | sh)" >&2; exit 127; }
 cd "$dir"
 
 # codex-cli >=0.147 rejects `--uncommitted` together with a PROMPT

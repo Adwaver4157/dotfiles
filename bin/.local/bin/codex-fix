@@ -17,7 +17,7 @@ dir="."
 if [ "${1:-}" = "-C" ]; then dir="$2"; shift 2; fi
 prompt="${1:?usage: codex-fix [-C dir] \"<instruction (finding + exact files)>\"}"
 
-command -v codex >/dev/null 2>&1 || { echo "codex not found (npm i -g @openai/codex)" >&2; exit 127; }
+command -v codex >/dev/null 2>&1 || { echo "codex not found (run ~/dotfiles/install.sh, or: curl -fsSL https://chatgpt.com/codex/install.sh | sh)" >&2; exit 127; }
 [ -f "$HOME/.codex/auth.json" ] || echo "warn: ~/.codex/auth.json missing — run 'codex login' first" >&2
 
 echo "→ codex exec (model from ~/.codex/config.toml, sandbox=workspace-write) in: $dir"
