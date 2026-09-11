@@ -74,6 +74,9 @@ docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi   # ve
 ```
 Machine-local config in `~/.bashrc.local` (e.g. `echo "sk-ant-..." > ~/.anthropic_api_key`, CUDA paths).
 
+Shared work dir (NAS etc.): `export WORK_DIR=/path/to/share` in `~/.bashrc.local`, then
+re-run `./install.sh` → `~/work -> $WORK_DIR`. Unset or unmounted → step is skipped.
+
 ### daily-report on a remote box
 
 The skill runs wherever Claude Code runs — session transcripts live on THAT
