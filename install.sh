@@ -14,6 +14,8 @@
 #   6. Backup any pre-existing real files that would conflict (timestamped)
 #   7. stow -R the OS-appropriate packages
 #   8. Install tpm (tmux plugin manager)
+#   9. Link ~/work -> $WORK_DIR (only when WORK_DIR is set and exists; the
+#      value itself is machine-local, e.g. exported from ~/.bashrc.local)
 #
 # Usage:
 #   ./install.sh                # install / re-stow
@@ -238,6 +240,28 @@ ensure_tpm() {
 }
 
 #------------------------------------------------------------------------------
+# 9. ~/work -> $WORK_DIR (shared NAS, external drive, ...). Mechanism only:
+#    the path is machine-local, so export WORK_DIR from ~/.bashrc.local /
+#    ~/.zshrc.local (or pass it: WORK_DIR=/path ./install.sh). Unset → skipped.
+#------------------------------------------------------------------------------
+ensure_work_dir() {
+  local target="${WORK_DIR:-}" link="${WORK_LINK:-$HOME/work}"
+  if [ -z "$target" ]; then skip "WORK_DIR not set; skipping $link symlink"; return; fi
+  if [ ! -d "$target" ]; then warn "WORK_DIR=$target is not a directory (not mounted?); skipping $link"; return; fi
+  if [ -L "$link" ]; then
+    if [ "$(readlink "$link")" = "$target" ]; then
+      skip "$link already -> $target"
+    else
+      ln -sfn "$target" "$link" && ok "$link -> $target (updated)" || warn "failed to update $link"
+    fi
+  elif [ -e "$link" ]; then
+    warn "$link exists and is not a symlink; leaving it alone (move it aside to link $target)"
+  else
+    ln -s "$target" "$link" && ok "$link -> $target" || warn "failed to create $link"
+  fi
+}
+
+#------------------------------------------------------------------------------
 # main
 #------------------------------------------------------------------------------
 main() {
@@ -264,12 +288,15 @@ main() {
   run_stow
   ensure_ssh_include
   ensure_tpm
+  ensure_work_dir
 
   log "Done."
   cat <<'EOF'
   Next steps:
     - Open a new shell (or 'source ~/.zshrc') to pick up PATH changes
     - Put machine-local config (anyenv, ANTHROPIC_API_KEY, host paths) in ~/.zshrc.local
+    - Shared work dir: export WORK_DIR=/path/to/nas in ~/.bashrc.local / ~/.zshrc.local
+      and re-run ./install.sh to get ~/work -> $WORK_DIR (skipped when unset)
     - In tmux, press prefix+I (Ctrl-a I) to install tpm plugins
     - 'codex login' once (needed by codex-fix / codex-review, the cross-model fallback)
     - ~/.ssh/config now Includes config.d/*.conf (ControlMaster + ban-safe keepalive)
