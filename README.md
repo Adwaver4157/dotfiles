@@ -80,9 +80,14 @@ OS-appropriate packages. Pre-existing real files are timestamp-backed up
 
 Never committed (gitignored):
 
-- `~/.zshrc.local` — anyenv, `ANTHROPIC_API_KEY`, host-specific paths
-- `~/.claude/settings.local.json` — per-machine Claude overrides
+- `~/.zshrc.local` (macOS) / `~/.bashrc.local` (Linux) — anyenv, `ANTHROPIC_API_KEY`,
+  host-specific paths, per-machine Claude env (e.g. `export ANTHROPIC_MODEL='opus[1m]'`,
+  which overrides `model` in the shared `settings.json`)
 - `~/.gitconfig.local` — private git extras (tokens, machine-only aliases)
+
+`~/.claude/settings.local.json` is **not** a per-machine user-level file: Claude Code
+reads it only as project-local settings when started in `$HOME`. Put per-machine Claude
+overrides in env vars (above) or pass `claude --settings`.
 
 ## Claude Code config (`claude/` package)
 
