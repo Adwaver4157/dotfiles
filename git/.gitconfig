@@ -1,0 +1,49 @@
+# ~/.gitconfig (dotfiles). Machine-local / private overrides -> ~/.gitconfig.local
+#
+# Identity + SSH key are chosen PER REMOTE (git >= 2.36 `hasconfig`), so plain
+# `git@github.com:<org>/<repo>` remotes just work without renaming them:
+#   github.com/Adwaver4157/**  -> personal  (~/.ssh/github_ed25519,       adwaver4157@gmail.com)
+#   github.com/airoa-org/**    -> AIRoA     (~/.ssh/airoa_github_ed25519, takanami-airoa)
+# Anything else falls back to the [user] block below + ~/.ssh/config's
+# `Host github.com` (personal key).
+#
+# The ssh aliases github-personal / github-airoa in ~/.ssh/config still work
+# and are matched too, so old clones keep their identity.
+
+[user]
+	name = Ryosuke Takanami
+	email = adwaver4157@gmail.com
+
+[init]
+	defaultBranch = main
+[pull]
+	rebase = false
+[push]
+	default = current
+	autoSetupRemote = true
+[fetch]
+	prune = true
+[rerere]
+	enabled = true
+[core]
+	editor = nvim
+
+# --- personal (Adwaver4157) ----------------------------------------------
+[includeIf "hasconfig:remote.*.url:git@github.com:Adwaver4157/**"]
+	path = ~/.config/git/personal.gitconfig
+[includeIf "hasconfig:remote.*.url:https://github.com/Adwaver4157/**"]
+	path = ~/.config/git/personal.gitconfig
+[includeIf "hasconfig:remote.*.url:github-personal:**"]
+	path = ~/.config/git/personal.gitconfig
+
+# --- AIRoA (airoa-org) -----------------------------------------------------
+[includeIf "hasconfig:remote.*.url:git@github.com:airoa-org/**"]
+	path = ~/.config/git/airoa.gitconfig
+[includeIf "hasconfig:remote.*.url:https://github.com/airoa-org/**"]
+	path = ~/.config/git/airoa.gitconfig
+[includeIf "hasconfig:remote.*.url:github-airoa:**"]
+	path = ~/.config/git/airoa.gitconfig
+
+# --- machine-local (gitignored, optional) ----------------------------------
+[include]
+	path = ~/.gitconfig.local

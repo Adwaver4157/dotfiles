@@ -1,0 +1,9 @@
+# Included for remotes under github.com/airoa-org (see ~/.gitconfig)
+# GitHub account: takanami-airoa. Email is that account's noreply address
+# (commits are attributed to the account without exposing a real mailbox);
+# swap it for your airoa.org address if the org wants real emails.
+[user]
+	name = Ryosuke Takanami
+	email = 243081263+takanami-airoa@users.noreply.github.com
+[core]
+	sshCommand = ssh -i ~/.ssh/airoa_github_ed25519 -o IdentitiesOnly=yes

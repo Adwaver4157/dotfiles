@@ -12,7 +12,7 @@ detects the OS and stows only the relevant packages.
 
 | Scope | Packages |
 |-------|----------|
-| **Shared** | `claude`, `tmux`, `bin`, `kitty`, `nvim`, `starship`, `ssh` |
+| **Shared** | `claude`, `tmux`, `bin`, `kitty`, `nvim`, `starship`, `ssh`, `bat`, `git` |
 | **macOS only** | `zsh`, `aerospace`, `ssh-macos` |
 | **Linux only** | `bash` |
 
@@ -28,6 +28,7 @@ detects the OS and stows only the relevant packages.
 │   ├── commands/  hooks/  skills/
 ├── nvim/.config/nvim/          # kickstart.nvim-based (init.lua + lock file)
 ├── tmux/.tmux.conf
+├── git/.gitconfig               # + .config/git/{personal,airoa}.gitconfig (per-remote identity/key)
 ├── zsh/.zshrc
 ├── kitty/.config/kitty/kitty.conf
 ├── starship/.config/starship.toml
@@ -81,6 +82,7 @@ Never committed (gitignored):
 
 - `~/.zshrc.local` — anyenv, `ANTHROPIC_API_KEY`, host-specific paths
 - `~/.claude/settings.local.json` — per-machine Claude overrides
+- `~/.gitconfig.local` — private git extras (tokens, machine-only aliases)
 
 ## Claude Code config (`claude/` package)
 
@@ -89,6 +91,22 @@ format-on-write hook + security allow/deny), `statusline.js`, `agents/`,
 `commands/`, `hooks/`, `skills/`. Runtime state (`projects/`, `todos/`,
 `memory/`, `.credentials.json`, `settings.local.json`) stays per-machine via
 `.gitignore`.
+
+## Git identities (`git/` package)
+
+`~/.gitconfig` picks **name/email and the SSH key per remote** via
+`includeIf "hasconfig:remote.*.url:…"` (git ≥ 2.36), so ordinary
+`git@github.com:<org>/<repo>` remotes need no renaming:
+
+| Remote | Identity | Key |
+|--------|----------|-----|
+| `github.com/Adwaver4157/**` (or `github-personal:`) | Adwaver4157 / adwaver4157@gmail.com | `~/.ssh/github_ed25519` |
+| `github.com/airoa-org/**` (or `github-airoa:`) | takanami-airoa (noreply email) | `~/.ssh/airoa_github_ed25519` |
+| anything else | `[user]` in `~/.gitconfig` (personal) | `~/.ssh/config` `Host github.com` |
+
+Check what a repo resolved to: `git config --show-origin user.email core.sshCommand`.
+Caveat: a system git older than 2.36 (Ubuntu 20.04 ships 2.25) silently ignores
+`hasconfig` — use the pixi `git` (first on PATH) or the `github-airoa:` alias.
 
 ## Agent teams & sandboxing
 

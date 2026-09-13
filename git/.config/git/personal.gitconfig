@@ -1,0 +1,6 @@
+# Included for remotes under github.com/Adwaver4157 (see ~/.gitconfig)
+[user]
+	name = Ryosuke Takanami
+	email = adwaver4157@gmail.com
+[core]
+	sshCommand = ssh -i ~/.ssh/github_ed25519 -o IdentitiesOnly=yes

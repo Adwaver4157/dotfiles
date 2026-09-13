@@ -39,7 +39,7 @@ case "$(uname -s)" in
 esac
 
 # Stow packages: shared set + OS-specific set.
-COMMON_PKGS=(claude tmux bin kitty nvim starship ssh bat)
+COMMON_PKGS=(claude tmux bin kitty nvim starship ssh bat git)
 case "$OS_KIND" in
   macos) OS_PKGS=(zsh aerospace ssh-macos) ;;
   linux) OS_PKGS=(bash) ;;        # Linux uses bash; macOS uses zsh
@@ -177,6 +177,8 @@ backup_existing_targets() {
   backup_if_real "$HOME/.local/bin/tmux-dev"
   backup_if_real "$HOME/.local/bin/rdp-ssh"
   backup_if_real "$HOME/.config/nvim"
+  backup_if_real "$HOME/.gitconfig"
+  backup_if_real "$HOME/.config/git"
   for f in CLAUDE.md settings.json statusline.js; do backup_if_real "$HOME/.claude/$f"; done
   for d in agents commands skills hooks; do backup_if_real "$HOME/.claude/$d"; done
   if [ "$OS_KIND" = macos ]; then
@@ -300,6 +302,8 @@ main() {
     - In tmux, press prefix+I (Ctrl-a I) to install tpm plugins
     - 'codex login' once (needed by codex-fix / codex-review, the cross-model fallback)
     - ~/.ssh/config now Includes config.d/*.conf (ControlMaster + ban-safe keepalive)
+    - ~/.gitconfig: identity + ssh key auto-switch per remote (Adwaver4157 / airoa-org);
+      private extras go in ~/.gitconfig.local
     - macOS: CLI tools, casks (incl. fuse-t for vdd sshfs), VS Code extensions,
       go/npm globals all come from ./Brewfile — see docs/macos-extras.md for notes
 EOF
