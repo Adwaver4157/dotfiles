@@ -88,4 +88,4 @@ if [ -z "$SSH_AUTH_SOCK" ]; then
 fi
 
 [ -f ~/.bashrc.local ] && . ~/.bashrc.local
-. "$HOME/.cargo/env"
+if [ -f "$HOME/.cargo/env" ]; then . "$HOME/.cargo/env"; fi
