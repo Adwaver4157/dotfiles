@@ -37,6 +37,10 @@ alias k='kubectl'
 alias ..='cd ..'
 alias ...='cd ../..'
 alias dot='cd ~/dotfiles'
+# codex TUI probes tmux via /usr/bin/tmux (fixed PATH, no timeout) and hangs when the
+# running server is a different tmux version. Workaround for openai/codex#44767; drop once fixed.
+[ -x /usr/bin/tmux ] && [ "$(command -v tmux)" != /usr/bin/tmux ] \
+  && alias codex='env -u TMUX TMUX_TMPDIR=/tmp/codex-notmux codex'
 
 # --- Claude Code: enable agent teams ---
 export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
