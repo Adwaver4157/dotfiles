@@ -74,6 +74,11 @@ docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi   # ve
 ```
 Machine-local config in `~/.bashrc.local` (e.g. `echo "sk-ant-..." > ~/.anthropic_api_key`, CUDA paths).
 
+nvim on Ubuntu 20.04 (glibc 2.31): the official neovim tarball needs glibc ≥ 2.32, so
+pixi's conda-forge build is the only option; its 0.11/0.12 builds link a mangled
+`libunibilium.so..` soname and `install.sh` (`fix_nvim_unibilium`) symlinks it. Re-run
+`./install.sh` after `pixi global update nvim`.
+
 Shared work dir (NAS etc.): `export WORK_DIR=/path/to/share` in `~/.bashrc.local`, then
 re-run `./install.sh` → `~/work -> $WORK_DIR`. Unset or unmounted → step is skipped.
 

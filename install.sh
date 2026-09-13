@@ -104,6 +104,26 @@ ensure_pixi_tools() {
 }
 
 #------------------------------------------------------------------------------
+# 2c. Work around conda-forge nvim linking against a mangled soname
+#     ("libunibilium.so.." — seen in nvim 0.11.7 / 0.12.5 linux-64 builds).
+#     nvim's RPATH is $ORIGIN/../lib, so a symlink there satisfies the loader.
+#     Re-run after every `pixi global update nvim` (the env is rebuilt).
+#------------------------------------------------------------------------------
+fix_nvim_unibilium() {
+  [ "$OS_KIND" = linux ] || return 0
+  local lib="$HOME/.pixi/envs/nvim/lib" bin="$HOME/.pixi/envs/nvim/bin/nvim"
+  [ -x "$bin" ] || return 0
+  if "$bin" --version >/dev/null 2>&1; then skip "nvim loads fine"; return; fi
+  if "$bin" --version 2>&1 | grep -q 'libunibilium\.so\.\.' && [ -e "$lib/libunibilium.so.4" ]; then
+    ln -sfn libunibilium.so.4 "$lib/libunibilium.so.." \
+      && ok "nvim: symlinked libunibilium.so.. -> libunibilium.so.4 (conda-forge soname bug)" \
+      || warn "nvim: could not create libunibilium.so.. symlink"
+  else
+    warn "nvim fails to start for a reason other than libunibilium; run 'nvim --version'"
+  fi
+}
+
+#------------------------------------------------------------------------------
 # 3. Claude Code
 #------------------------------------------------------------------------------
 ensure_claude_code() {
@@ -282,6 +302,7 @@ main() {
   ensure_pixi
   ensure_brew_bundle
   ensure_pixi_tools
+  fix_nvim_unibilium
   ensure_claude_code
   ensure_codex
   ensure_submodules
