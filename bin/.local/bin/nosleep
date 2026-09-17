@@ -1,0 +1,312 @@
+#!/usr/bin/env bash
+# nosleep -- keep this Mac awake (lid closed included) and switch it back, in
+# one command each.
+#
+# Two mechanisms are stacked on purpose:
+#   * `pmset -a disablesleep 1` is the only thing that stops CLAMSHELL sleep
+#     (closing the lid). Needs root and persists across reboots, so it MUST be
+#     undone -- that is what `off` is for.
+#   * a detached `caffeinate -ims` holds an idle-sleep assertion as a second
+#     layer, so a pmset timer changed elsewhere (this machine sleeps after 1 min
+#     on battery) cannot silently win. No root; it dies with its pid, so there
+#     is nothing to restore.
+# `-d` is deliberately NOT passed to caffeinate: the display is allowed to
+# sleep. A lit panel is the main source of heat and battery drain, and the point
+# is to keep the *session* alive, not the screen.
+#
+# The real failure mode of "keep awake" is a laptop cooking in a closed bag, so
+# `on` warns when on battery and supports an auto-off deadline plus a
+# low-battery cutoff, both enforced by a watchdog that `off` kills. The
+# watchdog has no tty, so it can only re-enable clamshell sleep if sudo needs no
+# password for that one command -- see `install-sudoers`. Without it the
+# watchdog still drops the caffeinate assertion and posts a notification.
+#
+# Usage:
+#   nosleep                  # same as `nosleep status`
+#   nosleep status
+#   nosleep on               # stay awake until `off`
+#   nosleep on 2h            # ... auto-off after 2h  (Ns / Nm / Nh, bare N = seconds)
+#   nosleep off
+#   nosleep toggle
+#   nosleep install-sudoers [--yes]   # print (or install) the NOPASSWD rule
+#
+# Env overrides (tests/nosleep_test.sh injects fakes through these):
+#   NOSLEEP_STATE_DIR NOSLEEP_SUDO NOSLEEP_PMSET NOSLEEP_CAFFEINATE
+#   NOSLEEP_DEFAULTS NOSLEEP_OSASCRIPT NOSLEEP_ALLOW_NON_DARWIN
+#   NOSLEEP_MIN_BATTERY   low-battery cutoff in % (default 20; 0 disables)
+#   NOSLEEP_POLL          watchdog poll interval in s (default 30)
+set -u
+
+PROG=${0##*/}
+STATE_DIR="${NOSLEEP_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/nosleep}"
+SUDO="${NOSLEEP_SUDO:-sudo}"
+PMSET="${NOSLEEP_PMSET:-/usr/bin/pmset}"
+CAFFEINATE="${NOSLEEP_CAFFEINATE:-/usr/bin/caffeinate}"
+DEFAULTS="${NOSLEEP_DEFAULTS:-/usr/bin/defaults}"
+OSASCRIPT="${NOSLEEP_OSASCRIPT:-/usr/bin/osascript}"
+MIN_BATTERY="${NOSLEEP_MIN_BATTERY:-20}"
+POLL="${NOSLEEP_POLL:-30}"
+
+CAFF_PID="$STATE_DIR/caffeinate.pid"
+DOG_PID="$STATE_DIR/watchdog.pid"
+META="$STATE_DIR/meta"          # KEY=VALUE lines: STARTED, DEADLINE (0 = none)
+
+log()  { printf '\033[34m[*]\033[0m %s\n' "$*"; }
+ok()   { printf '\033[32m[ok]\033[0m %s\n' "$*"; }
+skip() { printf '\033[90m[skip]\033[0m %s\n' "$*"; }
+warn() { printf '\033[33m[warn]\033[0m %s\n' "$*" >&2; }
+err()  { printf '\033[31m[err]\033[0m %s\n' "$*" >&2; }
+
+#------------------------------------------------------------------------------
+# Probes
+#------------------------------------------------------------------------------
+# `pmset -g` prints a `SleepDisabled 1` line only while the flag is set; the
+# PowerManagement plist is the fallback in case that line ever disappears.
+sleep_disabled() {
+  "$PMSET" -g 2>/dev/null | grep -qE '^[[:space:]]*SleepDisabled[[:space:]]+1' && return 0
+  "$DEFAULTS" read /Library/Preferences/com.apple.PowerManagement 2>/dev/null \
+    | grep -qE 'SleepDisabled[[:space:]]*=[[:space:]]*1' && return 0
+  return 1
+}
+on_ac()       { "$PMSET" -g ps 2>/dev/null | grep -q "'AC Power'"; }
+battery_pct() { "$PMSET" -g ps 2>/dev/null | grep -oE '[0-9]+%' | head -1 | tr -d '%'; }
+
+pid_alive() { [ -n "${1:-}" ] && kill -0 "$1" 2>/dev/null; }
+read_pid()  { [ -f "$1" ] && cat "$1" 2>/dev/null || true; }
+meta_get()  { [ -f "$META" ] && sed -n "s/^$1=//p" "$META" || true; }
+
+notify() {
+  [ -x "$OSASCRIPT" ] || command -v "$OSASCRIPT" >/dev/null 2>&1 || return 0
+  "$OSASCRIPT" -e "display notification \"$1\" with title \"nosleep\"" >/dev/null 2>&1 || true
+}
+
+# 90s / 45m / 2h / 3600 -> seconds. Anything else is an error.
+parse_duration() {
+  local v=${1:-} n u
+  [[ $v =~ ^([0-9]+)([smh]?)$ ]] || return 1
+  n=${BASH_REMATCH[1]}; u=${BASH_REMATCH[2]}
+  case $u in
+    h) echo $(( n * 3600 )) ;;
+    m) echo $(( n * 60 )) ;;
+    *) echo $(( n )) ;;
+  esac
+}
+
+fmt_dur() { # seconds -> 1h05m / 12m / 40s
+  local s=$1
+  if   [ "$s" -ge 3600 ]; then printf '%dh%02dm' $(( s / 3600 )) $(( s % 3600 / 60 ))
+  elif [ "$s" -ge 60 ];   then printf '%dm' $(( s / 60 ))
+  else                         printf '%ds' "$s"
+  fi
+}
+
+#------------------------------------------------------------------------------
+# Pieces
+#------------------------------------------------------------------------------
+start_caffeinate() {
+  local p; p=$(read_pid "$CAFF_PID")
+  if pid_alive "$p"; then skip "caffeinate already running (pid $p)"; return 0; fi
+  nohup "$CAFFEINATE" -ims >/dev/null 2>&1 &
+  echo $! > "$CAFF_PID"
+  ok "caffeinate -ims started (pid $!)"
+}
+
+stop_caffeinate() {
+  local p; p=$(read_pid "$CAFF_PID")
+  if pid_alive "$p"; then kill "$p" 2>/dev/null && ok "caffeinate stopped (pid $p)"; fi
+  rm -f "$CAFF_PID"
+}
+
+start_watchdog() { # deadline-epoch (0 = none)
+  local p; p=$(read_pid "$DOG_PID")
+  pid_alive "$p" && kill "$p" 2>/dev/null
+  nohup "$0" __watchdog "$1" >/dev/null 2>&1 &
+  echo $! > "$DOG_PID"
+}
+
+stop_watchdog() {
+  local p; p=$(read_pid "$DOG_PID")
+  # The watchdog itself calls `off`; do not let it kill itself mid-way.
+  if pid_alive "$p" && [ "$p" != "$$" ] && [ "$p" != "${PPID:-}" ]; then kill "$p" 2>/dev/null; fi
+  rm -f "$DOG_PID"
+}
+
+#------------------------------------------------------------------------------
+# Commands
+#------------------------------------------------------------------------------
+cmd_on() {
+  local secs=0 deadline=0
+  if [ -n "${1:-}" ]; then
+    if ! secs=$(parse_duration "$1"); then
+      err "bad duration '$1' -- use 90s, 45m, 2h or bare seconds (e.g. 3600)"
+      return 2
+    fi
+    deadline=$(( $(date +%s) + secs ))
+  fi
+  mkdir -p "$STATE_DIR"
+
+  if ! on_ac; then
+    warn "on battery ($(battery_pct)%): a closed laptop that cannot sleep gets hot and drains fast."
+    warn "watchdog will turn this off at ${MIN_BATTERY}% (NOSLEEP_MIN_BATTERY)."
+  fi
+
+  if sleep_disabled; then
+    skip "lid-close sleep already disabled"
+  else
+    log "disabling lid-close sleep: sudo pmset -a disablesleep 1"
+    if ! "$SUDO" "$PMSET" -a disablesleep 1; then
+      err "pmset failed; nothing changed"
+      return 1
+    fi
+    ok "lid-close sleep disabled"
+  fi
+
+  start_caffeinate
+
+  printf 'STARTED=%s\nDEADLINE=%s\n' "$(date +%s)" "$deadline" > "$META"
+  start_watchdog "$deadline"
+
+  if [ "$deadline" -gt 0 ]; then
+    ok "auto-off in $(fmt_dur "$secs") (at $(date -r "$deadline" +%H:%M))"
+  fi
+}
+
+cmd_off() {
+  local noninteractive=0 rc=0
+  [ "${1:-}" = "--non-interactive" ] && noninteractive=1
+  mkdir -p "$STATE_DIR"
+
+  stop_watchdog
+  stop_caffeinate
+
+  if sleep_disabled; then
+    if [ "$noninteractive" = 1 ]; then
+      if "$SUDO" -n "$PMSET" -a disablesleep 0 2>/dev/null; then
+        ok "lid-close sleep re-enabled"
+      else
+        # No tty, no cached credentials, no NOPASSWD rule: the assertion is
+        # gone but the lid flag is still set. Make noise rather than pretend.
+        warn "could not re-enable lid-close sleep without a password -- run: nosleep off"
+        warn "(make this automatic with: nosleep install-sudoers)"
+        notify "auto-off incomplete: run 'nosleep off' in a terminal"
+        rc=1
+      fi
+    else
+      log "re-enabling lid-close sleep: sudo pmset -a disablesleep 0"
+      if "$SUDO" "$PMSET" -a disablesleep 0; then
+        ok "lid-close sleep re-enabled"
+      else
+        err "pmset failed -- lid-close sleep is STILL disabled"
+        rc=1
+      fi
+    fi
+  else
+    skip "lid-close sleep already enabled"
+  fi
+
+  [ "$rc" = 0 ] && rm -f "$META"
+  return "$rc"
+}
+
+cmd_status() {
+  local disabled=0 caff dog started deadline now
+  sleep_disabled && disabled=1
+  caff=$(read_pid "$CAFF_PID"); pid_alive "$caff" || caff=""
+  dog=$(read_pid "$DOG_PID");   pid_alive "$dog"  || dog=""
+  now=$(date +%s)
+  started=$(meta_get STARTED); deadline=$(meta_get DEADLINE)
+
+  if [ "$disabled" = 1 ] && [ -n "$caff" ]; then
+    printf '%s: \033[32mON\033[0m' "$PROG"
+    [ -n "$started" ] && printf '  (for %s' "$(fmt_dur $(( now - started )))" && {
+      if [ "${deadline:-0}" -gt 0 ]; then printf ', auto-off in %s' "$(fmt_dur $(( deadline > now ? deadline - now : 0 )))"; fi
+      printf ')'
+    }
+    printf '\n'
+  elif [ "$disabled" = 1 ] || [ -n "$caff" ]; then
+    printf '%s: \033[33mPARTIAL\033[0m  (run `%s on` or `%s off` to make it consistent)\n' "$PROG" "$PROG" "$PROG"
+  else
+    printf '%s: \033[90mOFF\033[0m\n' "$PROG"
+  fi
+
+  printf '  lid-close sleep : %s\n' "$([ "$disabled" = 1 ] && echo 'DISABLED (pmset disablesleep=1)' || echo 'enabled (normal)')"
+  printf '  idle assertion  : %s\n' "${caff:+caffeinate pid $caff}${caff:-none}"
+  printf '  watchdog        : %s\n' "${dog:+pid $dog (battery cutoff ${MIN_BATTERY}%)}${dog:-none}"
+  if on_ac; then
+    printf '  power           : AC, battery %s%%\n' "$(battery_pct)"
+  else
+    printf '  power           : BATTERY %s%%\n' "$(battery_pct)"
+  fi
+}
+
+cmd_toggle() {
+  if sleep_disabled; then cmd_off; else cmd_on "$@"; fi
+}
+
+# Detached loop: poll deadline / battery / whether someone already turned us off.
+cmd_watchdog() {
+  local deadline=${1:-0} pct
+  while :; do
+    sleep "$POLL"
+    sleep_disabled || exit 0
+    pid_alive "$(read_pid "$CAFF_PID")" || exit 0
+    if [ "$deadline" -gt 0 ] && [ "$(date +%s)" -ge "$deadline" ]; then
+      "$0" off --non-interactive; exit 0
+    fi
+    if [ "$MIN_BATTERY" -gt 0 ] && ! on_ac; then
+      pct=$(battery_pct)
+      if [ -n "$pct" ] && [ "$pct" -le "$MIN_BATTERY" ]; then
+        notify "battery at ${pct}% -- turning nosleep off"
+        "$0" off --non-interactive; exit 0
+      fi
+    fi
+  done
+}
+
+cmd_install_sudoers() {
+  local target=/etc/sudoers.d/nosleep user rule
+  user=$(id -un)
+  rule=$(cat <<EOF
+# Installed by \`nosleep install-sudoers\` on $(date +%F).
+# Exactly two commands, no wildcards: the on/off flag for lid-close sleep.
+$user ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 1
+$user ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0
+EOF
+)
+  printf '%s\n\n' "$rule"
+  if [ "${1:-}" != "--yes" ]; then
+    log "print-only. Re-run with --yes to write $target (asks for your password once)."
+    return 0
+  fi
+  local tmp; tmp=$(mktemp)
+  printf '%s\n' "$rule" > "$tmp"
+  if ! "$SUDO" /usr/sbin/visudo -c -f "$tmp" >/dev/null; then
+    err "visudo rejected the rule; not installed"; rm -f "$tmp"; return 1
+  fi
+  "$SUDO" /usr/bin/install -m 0440 -o root -g wheel "$tmp" "$target" && ok "$target written"
+  rm -f "$tmp"
+}
+
+usage() {
+  sed -n '/^# Usage:/,/^#$/p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+#------------------------------------------------------------------------------
+# Dispatch
+#------------------------------------------------------------------------------
+[ "${NOSLEEP_SOURCE_ONLY:-}" = 1 ] && return 0 2>/dev/null
+
+if [ "$(uname -s)" != Darwin ] && [ -z "${NOSLEEP_ALLOW_NON_DARWIN:-}" ]; then
+  err "$PROG is macOS-only (pmset / caffeinate)"; exit 1
+fi
+
+case "${1:-status}" in
+  on)              shift; cmd_on "$@" ;;
+  off)             shift; cmd_off "$@" ;;
+  toggle)          shift; cmd_toggle "$@" ;;
+  status|st)       cmd_status ;;
+  install-sudoers) shift; cmd_install_sudoers "$@" ;;
+  __watchdog)      shift; cmd_watchdog "$@" ;;
+  -h|--help|help)  usage ;;
+  *) err "unknown command: $1"; usage >&2; exit 2 ;;
+esac
