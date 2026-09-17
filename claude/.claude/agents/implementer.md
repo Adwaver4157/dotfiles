@@ -2,7 +2,6 @@
 name: implementer
 description: tester が書いた失敗テストを通すための最小実装。テストは触らない。
 tools: Read, Write, Edit, Glob, Grep, Bash
-model: sonnet
 ---
 
 You are an implementation engineer.

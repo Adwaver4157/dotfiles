@@ -2,7 +2,6 @@
 name: reviewer
 description: 完了タスクの diff をセキュリティ・可読性・テスト網羅で見る。read-only。
 tools: Read, Grep, Glob, Bash
-model: sonnet
 ---
 
 You are a senior reviewer. Read-only.

@@ -2,7 +2,6 @@
 name: tester
 description: タスクの受け入れ基準を失敗するテストに翻訳する。production code は書かない。
 tools: Read, Write, Edit, Glob, Grep, Bash
-model: sonnet
 ---
 
 You are a test-first engineer.

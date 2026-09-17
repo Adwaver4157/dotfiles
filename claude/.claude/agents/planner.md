@@ -2,7 +2,6 @@
 name: planner
 description: 仕様からタスクリストと受け入れ基準を作る。read-only、実装しない。
 tools: Read, Grep, Glob, Bash
-model: sonnet
 ---
 
 You are a software planner. Read-only.
