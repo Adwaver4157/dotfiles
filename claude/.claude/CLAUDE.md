@@ -34,6 +34,11 @@
 - 未コミットの変更やマージ前のコミットが残っている worktree は消さない。消す前に必ず私に確認する
 - 作業の区切りでは `git worktree list` を棚卸しし、不要な残骸があれば報告する
 
+## Artifact
+- Artifact（HTML ページ）を publish したら、同じ HTML を必ずローカルにも保存する
+  （skill `artifact-local-copy`: 内容が属するリポの `docs/artifacts/<slug>.html`、無ければ `<workspace>/docs/artifacts/`）。
+  publish 後に `~/.claude/skills/artifact-local-copy/scripts/save-artifact-copy.sh <src> <dest> --url <URL>` を回し、最終報告で保存先を1行添える
+
 ## 検証
 - テストを書いてから実装するのが基本（TDD）
 - 「動くはず」ではなく実行確認した結果のみ「動いた」と報告する
