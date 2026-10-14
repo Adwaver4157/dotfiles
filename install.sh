@@ -94,7 +94,7 @@ ensure_pixi_tools() {
   local tools=(
     stow git curl wget jq bc tmux=3.4 nvim nodejs python=3.11
     ripgrep fd-find fzf zoxide bat eza lazygit gh tree htop
-    ruff uv pre-commit stylua clang-format pandoc starship
+    ruff uv pre-commit stylua clang-format pandoc starship awscli
   )
   [ "$OS_KIND" = linux ] && tools+=(xclip sshfs)
   log "Installing pixi global tools (idempotent per tool)"

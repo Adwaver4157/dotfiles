@@ -13,6 +13,8 @@ brew "jpeg-xl"
 brew "aom"
 # ARP scanning and fingerprinting tool
 brew "arp-scan"
+# Official Amazon AWS command-line interface
+brew "awscli"
 # Clone of cat(1) with syntax highlighting and Git integration
 brew "bat"
 # Concurrent, cache-efficient, and Dockerfile-agnostic builder toolkit
