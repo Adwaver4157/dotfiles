@@ -98,8 +98,8 @@ format-on-write hook + security allow/deny), `statusline.js`, `agents/`,
 `memory/`, `.credentials.json`, `settings.local.json`) stays per-machine via
 `.gitignore`.
 
-Japanese prose skills (`japanese-tech-writing` and `cognitive-rhythm-writing`)
-are also included. The `codex` package exposes the same sources through
+Writing skills (`japanese-tech-writing`, `cognitive-rhythm-writing`, and the
+original `research-paper-writing`) are also included. The `codex` package exposes the same sources through
 `~/.agents/skills/` for Codex. See [usage, installation, and upstream revisions](docs/claude-writing-skills.md).
 
 ## Git identities (`git/` package)

@@ -1,6 +1,6 @@
 # Japanese writing skills for Claude Code and Codex
 
-Two personal skills are vendored under `claude/.claude/skills/` and installed
+Three personal skills live under `claude/.claude/skills/` and installed
 into `~/.claude/skills/` by the existing GNU Stow `claude` package. They are
 available across local Claude Code projects. The GNU Stow `codex` package
 links the same two skill directories into `~/.agents/skills/`, making them
@@ -12,6 +12,7 @@ install skills into the claude.ai / Cowork account.
 | --- | --- |
 | `japanese-tech-writing` | Japanese technical prose: argument structure, precision, terminology, and editing. |
 | `cognitive-rhythm-writing` | Flow and pacing of explanatory prose. Reads the first skill before working. |
+| `research-paper-writing` | Research-paper drafting and revision (EN/JA): claim–defense structure, restrained self-disclosure that follows field norms, number consistency, draft-by-draft process. Original skill; sources in `sources.md`. |
 
 ## Install on another machine
 
