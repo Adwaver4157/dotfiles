@@ -161,6 +161,10 @@ brew "starship"
 brew "stow"
 # Tool Command Language
 brew "tcl-tk"
+# Terraform Language Server
+brew "terraform-ls"
+# Terraform version manager inspired by rbenv (terraform itself: see ensure_terraform in install.sh)
+brew "tfenv"
 # Terminal multiplexer
 brew "tmux"
 # Display directories as trees (with optional color/HTML output)

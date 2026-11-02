@@ -6,6 +6,7 @@
 #   1. Install pixi (if missing; used for per-project envs on both OSes)
 #   2. Tools: macOS → `brew bundle` from ./Brewfile (CLI + casks + VS Code +
 #      go/npm globals); Linux → pixi global install <tools>
+#   2d. Terraform via tfenv (default pinned by TF_DEFAULT_VERSION) + tflint via pixi
 #   3. Install Claude Code (if `claude` not on PATH)
 #   3b. Install Codex CLI (if `codex` not on PATH; official standalone installer)
 #   4. git submodule update --init --recursive (no-op if no submodules)
@@ -95,6 +96,7 @@ ensure_pixi_tools() {
     stow git curl wget jq bc tmux=3.4 nvim nodejs python=3.11
     ripgrep fd-find fzf zoxide bat eza lazygit gh tree htop
     ruff uv pre-commit stylua clang-format pandoc starship awscli
+    terraform-ls
   )
   [ "$OS_KIND" = linux ] && tools+=(xclip sshfs)
   log "Installing pixi global tools (idempotent per tool)"
@@ -120,6 +122,64 @@ fix_nvim_unibilium() {
       || warn "nvim: could not create libunibilium.so.. symlink"
   else
     warn "nvim fails to start for a reason other than libunibilium; run 'nvim --version'"
+  fi
+}
+
+#------------------------------------------------------------------------------
+# 2d. Terraform via tfenv. homebrew-core dropped terraform and tflint after the
+#     BUSL relicense, and the latest release may violate repo pins (e.g.
+#     `~> 1.15.0`), so a version manager pins the default; a repo can override
+#     it with a .terraform-version file.
+#     macOS: tfenv from Brewfile (its wrapper keeps state in ~/.config/tfenv).
+#     Linux: tfenv cloned to ~/.tfenv, linked into ~/.local/bin.
+#     tflint: pixi global on both OSes (no longer in homebrew-core).
+#------------------------------------------------------------------------------
+TF_DEFAULT_VERSION="${TF_DEFAULT_VERSION:-1.15.6}"   # matches household-apps CI
+ensure_terraform() {
+  local tfenv="" b
+  if [ "$OS_KIND" = linux ]; then
+    if [ -d "$HOME/.tfenv" ]; then
+      skip "tfenv already at ~/.tfenv"
+    elif git clone --depth=1 https://github.com/tfutils/tfenv.git "$HOME/.tfenv" >/dev/null 2>&1; then
+      ok "tfenv cloned to ~/.tfenv"
+    else
+      warn "git clone tfenv failed; skipping terraform"; return
+    fi
+    mkdir -p "$HOME/.local/bin"
+    for b in tfenv terraform; do
+      if [ -e "$HOME/.local/bin/$b" ] && [ ! -L "$HOME/.local/bin/$b" ]; then
+        warn "~/.local/bin/$b is a real file; leaving it (remove it to use tfenv's $b)"
+      else
+        ln -sfn "$HOME/.tfenv/bin/$b" "$HOME/.local/bin/$b"
+      fi
+    done
+    tfenv="$HOME/.tfenv/bin/tfenv"
+  elif have tfenv; then
+    tfenv="$(command -v tfenv)"
+  elif have brew && [ -x "$(brew --prefix)/bin/tfenv" ]; then
+    tfenv="$(brew --prefix)/bin/tfenv"
+  else
+    warn "tfenv not found (brew bundle failed?); skipping terraform"; return
+  fi
+
+  if "$tfenv" install "$TF_DEFAULT_VERSION" >/dev/null 2>&1; then
+    ok "terraform $TF_DEFAULT_VERSION installed via tfenv"
+  else
+    warn "tfenv install $TF_DEFAULT_VERSION failed (continuing)"; return
+  fi
+  # Set the global default only once, so a later manual `tfenv use` sticks.
+  if [ -f "$(cd "$HOME" && "$tfenv" version-file 2>/dev/null)" ]; then
+    skip "tfenv default already set ($(cd "$HOME" && "$tfenv" version-name 2>/dev/null))"
+  else
+    "$tfenv" use "$TF_DEFAULT_VERSION" >/dev/null 2>&1 \
+      && ok "tfenv default -> $TF_DEFAULT_VERSION" \
+      || warn "tfenv use $TF_DEFAULT_VERSION failed"
+  fi
+
+  if have pixi; then
+    pixi global install tflint >/dev/null 2>&1 && ok "tflint" || warn "pixi global install tflint failed (continuing)"
+  else
+    warn "pixi not on PATH; skipping tflint"
   fi
 }
 
@@ -303,6 +363,7 @@ main() {
   ensure_brew_bundle
   ensure_pixi_tools
   fix_nvim_unibilium
+  ensure_terraform
   ensure_claude_code
   ensure_codex
   ensure_submodules
