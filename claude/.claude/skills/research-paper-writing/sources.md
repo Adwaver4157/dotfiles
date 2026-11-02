@@ -9,6 +9,7 @@ Original skill (not vendored). Written 2026-10-16 from the following sources.
 | よくある論文執筆アドバイス https://yusukeiwasawa.notion.site/bcb435d320ac462baaff0df8d5b35bd9 (updated 2023-05-16) | 岩澤有祐 | 「誰にとってどう嬉しいか」、トピックセンテンスと構造文の区別、短文、and/but、デコラティブ表現、各節で書くべき問い、事実と推測の分離、図表・LaTeX の基本 |
 | 松尾研 wiki「論文よくある間違い」 https://github.com/matsuolab/wiki/wiki/論文よくある間違い | 松尾研 | （未取得。岩澤文書からの参照のみ） |
 | DROID (arXiv 2403.12945), AgiBot World (arXiv 2503.06669), BridgeData V2 (arXiv 2308.12952) | — | 第 3 節の分野慣行: 比較表は自分の行に欠落を置かない、Limitations は一段落 3〜8 文（確認日 2026-10-16） |
+| RA-L Phase1 原稿へのメンター通し読み指摘（2026-10-26、文字起こし `papers/RAL_Phase1/tmp/mtgs/ral_261026/`） | メンター（口頭） | 第 9 節: 報告書にしない（段落ごとの why、大→小、接続詞、初出定義、開発経緯の排除、消去法の禁止、数字の絞り込み、版の列挙禁止、標準語、図と本文の一致、em-dash、3 周の自己レビュー） |
 
 Local copies of the Matsuo guides (PDF prints) live under
 `~/workspace/matsuolab/doctor_dissersions/`; a dissertation-oriented digest is
