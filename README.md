@@ -29,7 +29,7 @@ detects the OS and stows only the relevant packages.
 ├── codex/.agents/skills/       # → ~/.agents/skills/ (shared writing skills)
 ├── nvim/.config/nvim/          # kickstart.nvim-based (init.lua + lock file)
 ├── tmux/.tmux.conf
-├── git/.gitconfig               # + .config/git/{personal,airoa}.gitconfig (per-remote identity/key)
+├── git/.gitconfig               # generic only; identity/key routing in ~/.gitconfig.local (see .example)
 ├── zsh/.zshrc
 ├── kitty/.config/kitty/kitty.conf
 ├── starship/.config/starship.toml
@@ -104,19 +104,22 @@ original `research-paper-writing`) are also included. The `codex` package expose
 
 ## Git identities (`git/` package)
 
-`~/.gitconfig` picks **name/email and the SSH key per remote** via
-`includeIf "hasconfig:remote.*.url:…"` (git ≥ 2.36), so ordinary
-`git@github.com:<org>/<repo>` remotes need no renaming:
+`~/.gitconfig` (tracked) holds only generic settings. **Who you are is not in
+this repo**: name/email and the SSH key per remote live in `~/.gitconfig.local`
+(gitignored), which `~/.gitconfig` includes last. It routes by remote via
+`includeIf "hasconfig:remote.*.url:…"` (git ≥ 2.36) to one small file per
+account under `~/.config/git/local/`, so ordinary `git@github.com:<org>/<repo>`
+remotes need no renaming.
 
-| Remote | Identity | Key |
-|--------|----------|-----|
-| `github.com/Adwaver4157/**` (or `github-personal:`) | Adwaver4157 / adwaver4157@gmail.com | `~/.ssh/github_ed25519` |
-| `github.com/airoa-org/**` (or `github-airoa:`) | takanami-airoa (noreply email) | `~/.ssh/airoa_github_ed25519` |
-| anything else | `[user]` in `~/.gitconfig` (personal) | `~/.ssh/config` `Host github.com` |
+```bash
+cp ~/.gitconfig.local.example ~/.gitconfig.local   # then edit; add ~/.config/git/local/<account>.gitconfig
+git config --show-origin user.email core.sshCommand  # what a repo resolved to
+```
 
-Check what a repo resolved to: `git config --show-origin user.email core.sshCommand`.
-Caveat: a system git older than 2.36 (Ubuntu 20.04 ships 2.25) silently ignores
-`hasconfig` — use the pixi `git` (first on PATH) or the `github-airoa:` alias.
+Without `~/.gitconfig.local` git has no identity and refuses to commit — on
+purpose. Caveat: a system git older than 2.36 (Ubuntu 20.04 ships 2.25)
+silently ignores `hasconfig` — use the pixi `git` (first on PATH) or an ssh
+alias pattern (`github-work:*/**`).
 
 ## Agent teams & sandboxing
 

@@ -270,6 +270,16 @@ backup_existing_targets() {
 }
 
 #------------------------------------------------------------------------------
+# 7a. git identity lives in ~/.gitconfig.local (gitignored), never in the repo.
+#     Only warn: committing with no identity fails loudly, a wrong one does not.
+#------------------------------------------------------------------------------
+ensure_gitconfig_local() {
+  [ -f "$HOME/.gitconfig.local" ] && return 0
+  warn "~/.gitconfig.local missing -> git has no user.name/email. Create it:"
+  warn "  cp ~/.gitconfig.local.example ~/.gitconfig.local && \$EDITOR ~/.gitconfig.local"
+}
+
+#------------------------------------------------------------------------------
 # 7b. Wire ~/.ssh/config to Include the managed config.d (idempotent, appends)
 #------------------------------------------------------------------------------
 ensure_ssh_include() {
@@ -370,6 +380,7 @@ main() {
   ensure_real_dirs
   backup_existing_targets
   run_stow
+  ensure_gitconfig_local
   ensure_ssh_include
   ensure_tpm
   ensure_work_dir
@@ -384,8 +395,8 @@ main() {
     - In tmux, press prefix+I (Ctrl-a I) to install tpm plugins
     - 'codex login' once (needed by codex-fix / codex-review, the cross-model fallback)
     - ~/.ssh/config now Includes config.d/*.conf (ControlMaster + ban-safe keepalive)
-    - ~/.gitconfig: identity + ssh key auto-switch per remote (Adwaver4157 / airoa-org);
-      private extras go in ~/.gitconfig.local
+    - git identity is NOT in the repo: cp ~/.gitconfig.local.example ~/.gitconfig.local
+      and edit (name/email + per-remote ssh key routing; see README "Git identities")
     - macOS: CLI tools, casks (incl. fuse-t for vdd sshfs), VS Code extensions,
       go/npm globals all come from ./Brewfile — see docs/macos-extras.md for notes
 EOF

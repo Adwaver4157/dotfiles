@@ -1,0 +1,39 @@
+# ~/.gitconfig.local -- identity + per-remote routing. Copy to ~/.gitconfig.local
+# (gitignored) and edit. Included last from ~/.gitconfig, so it wins.
+#
+# Identity + SSH key are chosen PER REMOTE (git >= 2.36 `hasconfig`), so plain
+# `git@github.com:<org>/<repo>` remotes just work without renaming them.
+# Each account gets its own small file under ~/.config/git/local/ (also
+# untracked), e.g. ~/.config/git/local/work.gitconfig:
+#
+#   [user]
+#   	name = Your Name
+#   	email = 12345678+your-work-login@users.noreply.github.com
+#   [core]
+#   	sshCommand = ssh -i ~/.ssh/work_ed25519 -o IdentitiesOnly=yes
+#
+# Check what a repo resolved to:
+#   git config --show-origin user.email core.sshCommand
+# A system git older than 2.36 ignores `hasconfig` silently; use a newer git
+# or an ssh alias (`Host github-work` in ~/.ssh/config) + the alias pattern.
+
+# Fallback for remotes that match nothing below (and for repos without remotes).
+[user]
+	name = Your Name
+	email = you@example.com
+
+# --- personal ------------------------------------------------------------
+[includeIf "hasconfig:remote.*.url:git@github.com:your-login/**"]
+	path = ~/.config/git/local/personal.gitconfig
+[includeIf "hasconfig:remote.*.url:https://github.com/your-login/**"]
+	path = ~/.config/git/local/personal.gitconfig
+[includeIf "hasconfig:remote.*.url:github-personal:*/**"]
+	path = ~/.config/git/local/personal.gitconfig
+
+# --- work ----------------------------------------------------------------
+[includeIf "hasconfig:remote.*.url:git@github.com:your-org/**"]
+	path = ~/.config/git/local/work.gitconfig
+[includeIf "hasconfig:remote.*.url:https://github.com/your-org/**"]
+	path = ~/.config/git/local/work.gitconfig
+[includeIf "hasconfig:remote.*.url:github-work:*/**"]
+	path = ~/.config/git/local/work.gitconfig
