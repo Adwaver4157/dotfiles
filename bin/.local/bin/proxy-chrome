@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# proxy-chrome -- a separate Chrome profile whose traffic goes through an
+# `ssh -D` SOCKS5 tunnel to a remote network, so hosts that only resolve /
+# route from there open like any other site. Normal Chrome is untouched.
+#
+# Usage:
+#   proxy-chrome [URL ...]            open URL(s); starts tunnel + Chrome if needed
+#   proxy-chrome                      just bring the proxied Chrome up (new window)
+#   proxy-chrome --restart [URL ...]  kill the proxied Chrome, start it fresh
+#   proxy-chrome --stop               kill the proxied Chrome and the ssh tunnel
+#
+# Configuration (env vars; put them in ~/.zshrc.local or in the config file
+# ~/.config/proxy-chrome/config, which is sourced if present -- neither lives
+# in this repo):
+#   PROXY_CHROME_SSH_HOST  (required)        ssh target for the tunnel, e.g. user@host
+#   PROXY_CHROME_PORT      (1080)            local SOCKS5 port
+#   PROXY_CHROME_DIR       (~/.proxy-chrome) Chrome user-data-dir
+#   PROXY_CHROME_BYPASS    (100.64.0.0/10)   proxy bypass list (Tailscale CGNAT range)
+#
+# Design notes:
+#   * The tunnel is started only when nothing listens on the port yet. `nc -z`
+#     cannot tell our tunnel from a stranger on the same port: if something
+#     else grabs it, Chrome will quietly talk to that instead.
+#   * If the proxied Chrome is already running, URLs are handed to it through
+#     Chrome's process singleton (keyed by --user-data-dir); the second process
+#     exits by itself. Flags only take effect at launch, so --restart after
+#     changing them.
+#   * --host-resolver-rules="MAP * ~NOTFOUND ..." makes Chrome unable to
+#     resolve names locally, so DNS prefetch / preconnect cannot leak hostnames
+#     outside the tunnel. Chrome's SOCKS5 client always resolves proxy-side
+#     anyway (net/docs/proxy.md), so this is belt-and-braces, not required.
+#     Chrome lists the flag as "unsupported" and shows a warning bar at every
+#     start; --test-type suppresses that bar (chrome/browser/ui/startup/
+#     infobar_utils.cc). It also hides the "make Chrome default?" bar.
+set -euo pipefail
+
+config="${XDG_CONFIG_HOME:-$HOME/.config}/proxy-chrome/config"
+# shellcheck source=/dev/null
+[ -f "$config" ] && . "$config"
+
+ssh_host="${PROXY_CHROME_SSH_HOST:-}"
+port="${PROXY_CHROME_PORT:-1080}"
+data_dir="${PROXY_CHROME_DIR:-$HOME/.proxy-chrome}"
+bypass="${PROXY_CHROME_BYPASS:-100.64.0.0/10}"
+app="Google Chrome"
+
+usage() { sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'; }
+
+chrome_running() { pgrep -f -- "user-data-dir=$data_dir" >/dev/null; }
+tunnel_up()      { nc -z localhost "$port" >/dev/null 2>&1; }
+
+ensure_tunnel() {
+  tunnel_up && return
+  if [ -z "$ssh_host" ]; then
+    echo "proxy-chrome: PROXY_CHROME_SSH_HOST is not set (export it or put it in $config)" >&2
+    exit 1
+  fi
+  echo "proxy-chrome: starting ssh -D $port to $ssh_host" >&2
+  ssh -N -f -D "$port" -o ExitOnForwardFailure=yes -o ServerAliveInterval=60 "$ssh_host"
+  for _ in 1 2 3 4 5 6 7 8 9 10; do tunnel_up && return; sleep 0.2; done
+  echo "proxy-chrome: tunnel did not come up on localhost:$port" >&2
+  exit 1
+}
+
+kill_chrome() {
+  chrome_running || return 0
+  pkill -f -- "user-data-dir=$data_dir" || true
+  for _ in 1 2 3 4 5 6 7 8 9 10; do chrome_running || return 0; sleep 0.3; done
+  echo "proxy-chrome: Chrome ($data_dir) is still running" >&2
+  exit 1
+}
+
+kill_tunnel() { pkill -f -- "ssh -N -f -D $port " || true; }
+
+launch() {
+  open -na "$app" --args \
+    --user-data-dir="$data_dir" \
+    --proxy-server="socks5://localhost:$port" \
+    --proxy-bypass-list="$bypass" \
+    --host-resolver-rules="MAP * ~NOTFOUND , EXCLUDE localhost , EXCLUDE 100.*" \
+    --test-type \
+    "$@"
+}
+
+# Same user-data-dir -> the new process forwards the URLs to the running one.
+hand_over() { open -na "$app" --args --user-data-dir="$data_dir" "$@"; }
+
+mode=open
+case "${1:-}" in
+  -h|--help) usage; exit 0 ;;
+  --restart) mode=restart; shift ;;
+  --stop)    mode=stop;    shift ;;
+esac
+
+case "$mode" in
+  stop)    kill_chrome; kill_tunnel; exit 0 ;;
+  restart) kill_chrome ;;
+esac
+
+ensure_tunnel
+if chrome_running; then
+  hand_over "$@"
+else
+  launch "$@"
+fi
