@@ -284,7 +284,8 @@
   "skipWorkflowUsageWarning": true,
   "theme": "dark",
   "teammateMode": "auto",
+  "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
-  "remoteControlAtStartup": true
+  "voiceEnabled": true
 }
