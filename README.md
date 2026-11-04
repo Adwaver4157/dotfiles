@@ -67,6 +67,10 @@ OS-appropriate packages. Pre-existing real files are timestamp-backed up
   ruff uv pre-commit stylua clang-format pandoc starship xclip sshfs
   ```
 
+  conda-forge has no `stow` for **linux-aarch64** (Jetson etc.); `install.sh`
+  then falls back to passwordless `apt`, else builds GNU stow into `~/.local`.
+  If stow is still missing it exits non-zero instead of silently linking nothing.
+
 ## Daily commands
 
 | Command | Action |

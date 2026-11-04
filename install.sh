@@ -106,6 +106,39 @@ ensure_pixi_tools() {
 }
 
 #------------------------------------------------------------------------------
+# 2b'. stow fallback. conda-forge has no stow build for linux-aarch64 (Jetson
+#      etc.), so `pixi global install stow` fails there. Without stow nothing
+#      gets linked, so try harder: passwordless apt, then a user-local build
+#      of GNU stow (pure Perl) into ~/.local. Never prompts for a password.
+#------------------------------------------------------------------------------
+STOW_VERSION="${STOW_VERSION:-2.4.1}"
+ensure_stow() {
+  export PATH="$HOME/.local/bin:$PATH"
+  if have stow; then skip "stow available ($(command -v stow))"; return; fi
+
+  if have apt-get && sudo -n true 2>/dev/null; then
+    log "stow: installing via apt (passwordless sudo)"
+    sudo -n apt-get install -y stow >/dev/null 2>&1 && have stow && { ok "stow (apt)"; return; }
+    warn "apt-get install stow failed; trying a source build"
+  fi
+
+  if ! have perl || ! have make; then
+    warn "stow: perl/make missing, cannot build from source"; return
+  fi
+  log "stow: building GNU stow $STOW_VERSION into ~/.local (no sudo)"
+  local tmp; tmp="$(mktemp -d)"
+  if curl -fsSL "https://ftp.gnu.org/gnu/stow/stow-${STOW_VERSION}.tar.gz" | tar xz -C "$tmp" \
+     && (cd "$tmp/stow-${STOW_VERSION}" && ./configure --prefix="$HOME/.local" >/dev/null 2>&1 \
+         && make install >/dev/null 2>&1) \
+     && have stow; then
+    ok "stow $STOW_VERSION built into ~/.local/bin"
+  else
+    warn "stow source build failed (install manually: sudo apt install stow)"
+  fi
+  rm -rf "$tmp"
+}
+
+#------------------------------------------------------------------------------
 # 2c. Work around conda-forge nvim linking against a mangled soname
 #     ("libunibilium.so.." — seen in nvim 0.11.7 / 0.12.5 linux-64 builds).
 #     nvim's RPATH is $ORIGIN/../lib, so a symlink there satisfies the loader.
@@ -298,8 +331,12 @@ ensure_ssh_include() {
 #------------------------------------------------------------------------------
 # 7. stow each package independently
 #------------------------------------------------------------------------------
+STOW_FAILED=0
 run_stow() {
-  if ! have stow; then warn "stow not installed; run pixi tools step first"; return; fi
+  if ! have stow; then
+    err "stow not installed -> NO dotfiles were linked. Install it (sudo apt install stow) and re-run."
+    STOW_FAILED=1; return
+  fi
   log "Stowing $OS_KIND packages: ${STOW_PKGS[*]}"
   cd "$DOTFILES_DIR" || { err "cd $DOTFILES_DIR failed"; return; }
   for pkg in "${STOW_PKGS[@]}"; do
@@ -308,6 +345,7 @@ run_stow() {
       ok "stow $pkg"
     else
       warn "stow $pkg had conflicts; see /tmp/stow-${pkg}.err"
+      STOW_FAILED=1
     fi
   done
 }
@@ -372,6 +410,7 @@ main() {
   ensure_pixi
   ensure_brew_bundle
   ensure_pixi_tools
+  ensure_stow
   fix_nvim_unibilium
   ensure_terraform
   ensure_claude_code
@@ -400,6 +439,10 @@ main() {
     - macOS: CLI tools, casks (incl. fuse-t for vdd sshfs), VS Code extensions,
       go/npm globals all come from ./Brewfile — see docs/macos-extras.md for notes
 EOF
+  if [ "$STOW_FAILED" -ne 0 ]; then
+    err "Linking was INCOMPLETE (stow missing or conflicts) — see messages above."
+    return 1
+  fi
 }
 
 main "$@"
