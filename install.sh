@@ -55,17 +55,74 @@ warn() { printf '\033[33m[warn]\033[0m %s\n' "$*" >&2; }
 err()  { printf '\033[31m[err]\033[0m %s\n' "$*" >&2; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# Download URL $1 to file $2. A bare Linux image may lack curl (pixi is what
+# installs it here), so fall back to wget, then python3.
+fetch() {
+  local url="$1" out="$2"
+  if have curl; then
+    curl -fsSL "$url" -o "$out"
+  elif have wget; then
+    wget -qO "$out" "$url"
+  elif have python3; then
+    python3 -c 'import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])' "$url" "$out"
+  else
+    err "no downloader: need curl, wget or python3"; return 1
+  fi
+}
+
+# Download an installer script, then run it as `"$@" <script>`. Unlike
+# `curl ... | sh`, a failed download is a failure: piping nothing into sh
+# exits 0 and would print a false "[ok]".
+run_installer() {
+  local url="$1" f rc; shift
+  f="$(mktemp)"
+  if fetch "$url" "$f" && [ -s "$f" ]; then "$@" "$f"; rc=$?; else rc=1; fi
+  rm -f "$f"
+  return "$rc"
+}
+
 #------------------------------------------------------------------------------
 # 1. pixi
 #------------------------------------------------------------------------------
+# pixi's own installer needs curl or wget. Without either, fetch the static
+# musl binary from GitHub releases (the same asset the installer would use).
+install_pixi_binary() {
+  local arch tmp rc
+  [ "$OS_KIND" = linux ] || return 1
+  case "$(uname -m)" in
+    x86_64|amd64)  arch=x86_64 ;;
+    aarch64|arm64) arch=aarch64 ;;
+    *) err "pixi: no direct-download fallback for $(uname -m)"; return 1 ;;
+  esac
+  tmp="$(mktemp -d)"
+  fetch "https://github.com/prefix-dev/pixi/releases/latest/download/pixi-${arch}-unknown-linux-musl.tar.gz" "$tmp/pixi.tgz" \
+    && tar xzf "$tmp/pixi.tgz" -C "$tmp" \
+    && mkdir -p "$HOME/.pixi/bin" \
+    && install -m 755 "$tmp/pixi" "$HOME/.pixi/bin/pixi"
+  rc=$?
+  rm -rf "$tmp"
+  return "$rc"
+}
+
 ensure_pixi() {
   if have pixi; then
     skip "pixi already installed ($(pixi --version 2>/dev/null))"
   else
     log "Installing pixi"
-    curl -fsSL https://pixi.sh/install.sh | bash && ok "pixi installed" || warn "pixi install failed"
+    if have curl || have wget; then
+      run_installer https://pixi.sh/install.sh bash && ok "pixi installed" || warn "pixi install failed"
+    else
+      warn "neither curl nor wget found; downloading the pixi binary directly"
+      install_pixi_binary && ok "pixi installed (binary from GitHub releases)" || warn "pixi install failed"
+    fi
   fi
   export PATH="$HOME/.pixi/bin:$PATH"
+  # Chicken-and-egg: on a bare box curl comes from pixi, but later steps
+  # (stow source build, Claude Code / Codex installers) download things.
+  if ! have curl && have pixi; then
+    pixi global install curl >/dev/null 2>&1 && ok "curl (pixi global, bootstrap)" \
+      || warn "pixi global install curl failed; later downloads fall back to wget/python3"
+  fi
 }
 
 #------------------------------------------------------------------------------
@@ -127,7 +184,8 @@ ensure_stow() {
   fi
   log "stow: building GNU stow $STOW_VERSION into ~/.local (no sudo)"
   local tmp; tmp="$(mktemp -d)"
-  if curl -fsSL "https://ftp.gnu.org/gnu/stow/stow-${STOW_VERSION}.tar.gz" | tar xz -C "$tmp" \
+  if fetch "https://ftp.gnu.org/gnu/stow/stow-${STOW_VERSION}.tar.gz" "$tmp/stow.tgz" \
+     && tar xzf "$tmp/stow.tgz" -C "$tmp" \
      && (cd "$tmp/stow-${STOW_VERSION}" && ./configure --prefix="$HOME/.local" >/dev/null 2>&1 \
          && make install >/dev/null 2>&1) \
      && have stow; then
@@ -222,7 +280,7 @@ ensure_terraform() {
 ensure_claude_code() {
   if have claude; then skip "claude code already installed"; return; fi
   log "Installing Claude Code"
-  curl -fsSL https://claude.ai/install.sh | bash && ok "claude code installed" || warn "claude code install failed"
+  run_installer https://claude.ai/install.sh bash && ok "claude code installed" || warn "claude code install failed"
 }
 
 #------------------------------------------------------------------------------
@@ -239,7 +297,7 @@ ensure_codex() {
   # (fine without a tty). ~/.local/bin being on PATH here makes the installer
   # skip its own rc-file edit — the stowed .bashrc/.zshrc already export it, and
   # after stow those rc files are symlinks into this repo.
-  curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh \
+  run_installer https://chatgpt.com/codex/install.sh env CODEX_NON_INTERACTIVE=1 sh \
     && ok "codex installed" || warn "codex install failed (re-run, or: curl -fsSL https://chatgpt.com/codex/install.sh | sh)"
 }
 
